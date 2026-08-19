@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use lumiere_core::wire::{clamp_to_device, encode};
+use lumiere_core::wire::{clamp_to_device, encode, hsi_to_cct};
 use lumiere_proto::{Capabilities, ConnState, LightId, Mode, PerLightResult, SkipReason};
 use lumiere_transport::{Link, Transport, WriteKind};
 use tokio::sync::{Semaphore, mpsc, oneshot, watch};
@@ -260,9 +260,7 @@ impl LightActor {
                 reason: SkipReason::NotConnected,
             };
         }
-        if matches!(requested, Mode::Hsi { .. }) && !self.caps.rgb
-            || matches!(requested, Mode::Scene { .. }) && !self.caps.scenes
-        {
+        if matches!(requested, Mode::Scene { .. }) && !self.caps.scenes {
             self.last_written = Some(requested);
             return PerLightResult::Skipped {
                 id: self.id.clone(),
@@ -270,7 +268,17 @@ impl LightActor {
             };
         }
 
-        let (applied, adapted) = clamp_to_device(requested, &self.caps);
+        // A color command to a bi-color light approximates the hue as a
+        // temperature, matching the reference's default convert fallback.
+        // Without this, most of the animation library is silent on CCT rigs.
+        let (requested_for_device, converted) = match requested {
+            Mode::Hsi { hue, bri, .. } if !self.caps.rgb => {
+                (hsi_to_cct(hue, bri, &self.caps), true)
+            }
+            other => (other, false),
+        };
+        let (applied, clamped) = clamp_to_device(requested_for_device, &self.caps);
+        let adapted = converted || clamped;
         for packet in encode(applied, &self.caps) {
             if let Err(error) = self.write_packet(packet.as_bytes()).await {
                 self.last_written = None;
