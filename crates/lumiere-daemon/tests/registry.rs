@@ -839,3 +839,50 @@ async fn preset_recall_preempts_playback_once() {
     assert_eq!(stopped, 1);
     registry.shutdown().await;
 }
+
+/// Recalling a mode onto a light that was turned off must wake it first:
+/// Neewer mode writes do not power the light on by themselves.
+#[tokio::test(start_paused = true)]
+async fn lit_modes_wake_a_light_that_was_turned_off() {
+    let (sim, registry) = setup(four_lights()).await;
+    let id = LightId::sim("rgb660");
+    let selector = Selector::Ids {
+        ids: vec![id.clone()],
+    };
+
+    set_mode_with_time(&registry, selector.clone(), Mode::Off).await;
+    let cct = Mode::Cct {
+        temp: Kelvin::new(4200).unwrap(),
+        bri: Percent::new(50).unwrap(),
+    };
+    let results = set_mode_with_time(&registry, selector, cct).await;
+    assert!(matches!(results[0], PerLightResult::Applied { .. }));
+
+    let tail: Vec<_> = sim
+        .light(&id)
+        .timeline()
+        .iter()
+        .map(|(_, decoded)| *decoded)
+        .collect();
+    assert_eq!(
+        tail,
+        vec![
+            Decoded::Power(false),
+            Decoded::Power(true),
+            Decoded::Cct {
+                temp_hk: 42,
+                bri: 50
+            },
+        ]
+    );
+    let world = registry.world();
+    let light = world
+        .borrow()
+        .lights
+        .iter()
+        .find(|l| l.id == id)
+        .cloned()
+        .unwrap();
+    assert_eq!(light.power, Some(true));
+    registry.shutdown().await;
+}

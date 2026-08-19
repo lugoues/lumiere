@@ -1369,8 +1369,11 @@ fn result_id(result: &PerLightResult) -> &LightId {
 
 fn update_power(snapshot: &mut LightSnapshot, mode: Mode) {
     match mode {
-        Mode::On => snapshot.power = Some(true),
         Mode::Off => snapshot.power = Some(false),
-        Mode::Cct { .. } | Mode::Hsi { .. } | Mode::Scene { .. } => {}
+        // The actor wakes a known-off light before lit modes, so any other
+        // confirmed mode means the light is on.
+        Mode::On | Mode::Cct { .. } | Mode::Hsi { .. } | Mode::Scene { .. } => {
+            snapshot.power = Some(true);
+        }
     }
 }
