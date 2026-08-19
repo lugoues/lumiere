@@ -19,8 +19,8 @@ use axum::{
 };
 use lumiere_proto::{
     Animation, AnimationId, AnimationSummary, ClientMsg, CommandRequest, CommandResponse, LightId,
-    PlaybackOptions, PlaybackStatus, ResyncReason, ServerMsg, TargetBinding, WS_PROTOCOL_VERSION,
-    WorldSnapshot,
+    PlaybackOptions, PlaybackStatus, Preset, PresetId, ResyncReason, Selector, ServerMsg,
+    TargetBinding, WS_PROTOCOL_VERSION, WorldSnapshot,
 };
 use rand::{TryRngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
@@ -86,6 +86,9 @@ pub fn router(state: ApiState) -> Router {
         .route("/animations/{id}", get(animation))
         .route("/animations/{id}/play", post(play_animation))
         .route("/playback/stop", post(stop_playback))
+        .route("/presets", get(presets).post(capture_preset))
+        .route("/presets/{id}", patch(rename_preset).delete(delete_preset))
+        .route("/presets/{id}/recall", post(recall_preset))
         .route("/ws-ticket", post(ws_ticket))
         .fallback(api_not_found)
         .layer(middleware::from_fn_with_state(state.clone(), authorize))
@@ -107,7 +110,7 @@ pub fn router(state: ApiState) -> Router {
         rest.layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list(origins))
-                .allow_methods([Method::GET, Method::POST, Method::PATCH])
+                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
                 .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]),
         )
     };
@@ -303,6 +306,99 @@ async fn stop_playback(State(state): State<ApiState>) -> Result<Json<serde_json:
         .await
         .map_err(ApiError::registry)?;
     Ok(Json(serde_json::json!({ "stopped": stopped })))
+}
+
+async fn presets(State(state): State<ApiState>) -> Result<Json<Vec<Preset>>, ApiError> {
+    state
+        .registry
+        .list_presets()
+        .await
+        .map(Json)
+        .map_err(ApiError::registry)
+}
+
+#[derive(Deserialize)]
+struct CapturePresetRequest {
+    name: String,
+    selector: Selector,
+}
+
+async fn capture_preset(
+    State(state): State<ApiState>,
+    Json(request): Json<CapturePresetRequest>,
+) -> Result<impl IntoResponse, ApiError> {
+    let preset = state
+        .registry
+        .save_preset(request.name, request.selector)
+        .await
+        .map_err(ApiError::conflict)?;
+    Ok((StatusCode::CREATED, Json(preset)))
+}
+
+#[derive(Default, Deserialize)]
+struct RecallPresetRequest {
+    #[serde(default)]
+    wait: bool,
+}
+
+async fn recall_preset(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+    Json(request): Json<RecallPresetRequest>,
+) -> Result<Json<CommandResponse>, ApiError> {
+    let id = parse_preset_id(&id)?;
+    require_preset(&state, &id).await?;
+    let results = state
+        .registry
+        .recall_preset(id, request.wait)
+        .await
+        .map_err(ApiError::registry)?;
+    Ok(Json(CommandResponse { results }))
+}
+
+#[derive(Deserialize)]
+struct RenamePresetRequest {
+    name: String,
+}
+
+async fn rename_preset(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+    Json(request): Json<RenamePresetRequest>,
+) -> Result<Json<Preset>, ApiError> {
+    let id = parse_preset_id(&id)?;
+    require_preset(&state, &id).await?;
+    state
+        .registry
+        .rename_preset(id.clone(), request.name)
+        .await
+        .map_err(ApiError::conflict)?;
+    require_preset(&state, &id).await.map(Json)
+}
+
+async fn delete_preset(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    let id = parse_preset_id(&id)?;
+    require_preset(&state, &id).await?;
+    state
+        .registry
+        .delete_preset(id)
+        .await
+        .map_err(ApiError::registry)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn require_preset(state: &ApiState, id: &PresetId) -> Result<Preset, ApiError> {
+    state
+        .registry
+        .list_presets()
+        .await
+        .map_err(ApiError::registry)?
+        .into_iter()
+        .find(|preset| &preset.id == id)
+        .ok_or_else(|| ApiError::not_found(format!("preset {id} was not found")))
 }
 
 #[derive(Serialize)]
@@ -535,6 +631,13 @@ fn parse_id(value: &str) -> Result<LightId, ApiError> {
 
 fn parse_animation_id(value: &str) -> Result<AnimationId, ApiError> {
     AnimationId::parse(value).map_err(|message| ApiError {
+        status: StatusCode::BAD_REQUEST,
+        message,
+    })
+}
+
+fn parse_preset_id(value: &str) -> Result<PresetId, ApiError> {
+    PresetId::parse(value).map_err(|message| ApiError {
         status: StatusCode::BAD_REQUEST,
         message,
     })

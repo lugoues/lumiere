@@ -39,13 +39,14 @@ impl TestServer {
 async fn spawn_test_server(store_path: Option<PathBuf>) -> Option<TestServer> {
     let data = tempfile::tempdir().unwrap();
     let store_path = store_path.unwrap_or_else(|| data.path().join("lights.toml"));
-    let labels = store::load(&store_path).unwrap();
-    let (store_updates, store_task) = store::spawn(store_path.clone(), labels.clone());
+    let stored = store::load(&store_path).unwrap();
+    let (store_updates, store_task) = store::spawn(store_path.clone(), stored.clone());
     let sim = sim_transport();
     let registry = RegistryHandle::spawn_with_config(
         sim.clone(),
         RegistryConfig {
-            labels,
+            labels: stored.labels,
+            presets: stored.presets,
             store_updates: Some(store_updates),
             animations_dir: Some(
                 PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/animations"),
@@ -311,7 +312,7 @@ async fn labels_are_persisted_and_restored() {
     .unwrap();
     let persisted = store::load(&path).unwrap();
     assert_eq!(
-        persisted.get(&LightId::sim("1")).map(String::as_str),
+        persisted.labels.get(&LightId::sim("1")).map(String::as_str),
         Some("Key")
     );
     first.stop().await;
@@ -328,6 +329,144 @@ async fn labels_are_persisted_and_restored() {
             .map(|light| light.label.as_str()),
         Some("Key")
     );
+    second.stop().await;
+}
+
+#[tokio::test]
+async fn preset_factory_capture_recall_rename_and_delete_round_trip() {
+    let Some(server) = spawn_test_server(None).await else {
+        return;
+    };
+    let client = Client::new();
+    let initial = client
+        .get(format!("{}/api/v1/presets", server.base))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(initial.status(), StatusCode::OK);
+    let factory = initial.json::<Vec<lumiere_proto::Preset>>().await.unwrap();
+    assert_eq!(factory.len(), 8);
+    assert_eq!(factory[0].name, "Daylight");
+    assert!(server._data.path().join("presets.toml").exists());
+
+    scan_and_wait(&client, &server).await;
+    let response = client
+        .post(format!("{}/api/v1/command", server.base))
+        .bearer_auth(TOKEN)
+        .json(&cct_command(true))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let captured = client
+        .post(format!("{}/api/v1/presets", server.base))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({"name": "Studio Look", "selector": {"kind": "all"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(captured.status(), StatusCode::CREATED);
+    let captured = captured.json::<lumiere_proto::Preset>().await.unwrap();
+    assert_eq!(captured.id.as_str(), "studio-look");
+    assert_eq!(captured.entries.len(), 4);
+
+    client
+        .post(format!("{}/api/v1/command", server.base))
+        .bearer_auth(TOKEN)
+        .json(
+            &serde_json::to_value(lumiere_proto::CommandRequest {
+                selector: Selector::All,
+                mode: Mode::Off,
+                wait: true,
+            })
+            .unwrap(),
+        )
+        .send()
+        .await
+        .unwrap();
+    let recalled = client
+        .post(format!(
+            "{}/api/v1/presets/{}/recall",
+            server.base, captured.id
+        ))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({"wait": true}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(recalled.status(), StatusCode::OK);
+    assert_eq!(
+        recalled
+            .json::<CommandResponse>()
+            .await
+            .unwrap()
+            .results
+            .len(),
+        4
+    );
+
+    let renamed = client
+        .patch(format!("{}/api/v1/presets/{}", server.base, captured.id))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({"name": "Portrait"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(renamed.status(), StatusCode::OK);
+    assert_eq!(
+        renamed.json::<lumiere_proto::Preset>().await.unwrap().name,
+        "Portrait"
+    );
+    let deleted = client
+        .delete(format!("{}/api/v1/presets/{}", server.base, captured.id))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(deleted.status(), StatusCode::NO_CONTENT);
+    server.stop().await;
+}
+
+#[tokio::test]
+async fn captured_presets_persist_across_registries() {
+    let shared_data = tempfile::tempdir().unwrap();
+    let path = shared_data.path().join("lights.toml");
+    let Some(first) = spawn_test_server(Some(path.clone())).await else {
+        return;
+    };
+    let client = Client::new();
+    scan_and_wait(&client, &first).await;
+    client
+        .post(format!("{}/api/v1/command", first.base))
+        .bearer_auth(TOKEN)
+        .json(&cct_command(true))
+        .send()
+        .await
+        .unwrap();
+    let response = client
+        .post(format!("{}/api/v1/presets", first.base))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({"name": "Persistent", "selector": {"kind": "all"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    first.stop().await;
+
+    let Some(second) = spawn_test_server(Some(path)).await else {
+        return;
+    };
+    let presets = client
+        .get(format!("{}/api/v1/presets", second.base))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap()
+        .json::<Vec<lumiere_proto::Preset>>()
+        .await
+        .unwrap();
+    assert!(presets.iter().any(|preset| preset.name == "Persistent"));
     second.stop().await;
 }
 

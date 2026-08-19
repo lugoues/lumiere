@@ -737,3 +737,94 @@ async fn slot_bindings_are_specific_and_fallback_wraps_round_robin() {
     ));
     registry.shutdown().await;
 }
+
+#[tokio::test(start_paused = true)]
+async fn preset_capture_recall_rename_and_delete_round_trip() {
+    let (sim, registry) = setup(vec![spec("one", "NEEWER-RGB660 PRO")]).await;
+    let id = LightId::sim("one");
+    let captured_mode = hsi(42);
+    set_mode_with_time(&registry, Selector::All, captured_mode).await;
+
+    let preset = registry
+        .save_preset("My Look".to_owned(), Selector::All)
+        .await
+        .unwrap();
+    assert_eq!(preset.id.as_str(), "my-look");
+    assert_eq!(preset.entries.len(), 1);
+    set_mode_with_time(&registry, Selector::All, hsi(180)).await;
+
+    let recall_registry = registry.clone();
+    let preset_id = preset.id.clone();
+    let recall = tokio::spawn(async move { recall_registry.recall_preset(preset_id, true).await });
+    tokio::task::yield_now().await;
+    advance(Duration::from_secs(1)).await;
+    let results = recall.await.unwrap().unwrap();
+    assert!(matches!(
+        results.as_slice(),
+        [PerLightResult::Applied { id: result_id, mode }] if result_id == &id && *mode == captured_mode
+    ));
+    assert!(matches!(
+        sim.light(&id).last(),
+        Some((_, Decoded::Hsi { hue: 42, .. }))
+    ));
+
+    registry
+        .rename_preset(preset.id.clone(), "Renamed".to_owned())
+        .await
+        .unwrap();
+    assert_eq!(registry.list_presets().await.unwrap()[0].name, "Renamed");
+    registry.delete_preset(preset.id).await.unwrap();
+    assert!(registry.list_presets().await.unwrap().is_empty());
+    registry.shutdown().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn preset_recall_preempts_playback_once() {
+    let animation = test_animation(
+        vec![
+            Keyframe {
+                hold_ms: 50,
+                fade_ms: 0,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(0))]),
+            },
+            Keyframe {
+                hold_ms: 50,
+                fade_ms: 2_000,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(100))]),
+            },
+        ],
+        0,
+    );
+    let id = LightId::sim("one");
+    let (sim, registry, _directory) =
+        setup_animation(vec![spec("one", "NEEWER-RGB660 PRO")], &animation).await;
+    set_mode_with_time(&registry, Selector::All, hsi(250)).await;
+    let preset = registry
+        .save_preset("Saved".to_owned(), Selector::All)
+        .await
+        .unwrap();
+    let mut events = registry.events();
+    registry
+        .play(
+            animation.id,
+            PlaybackOptions::default(),
+            TargetBinding::default(),
+        )
+        .await
+        .unwrap();
+    wait_until(|| sim.light(&id).timeline().len() >= 2).await;
+    registry.recall_preset(preset.id, false).await.unwrap();
+    advance(Duration::from_secs(1)).await;
+    wait_until(|| {
+        matches!(
+            sim.light(&id).last(),
+            Some((_, Decoded::Hsi { hue: 250, .. }))
+        )
+    })
+    .await;
+    let stopped = std::iter::from_fn(|| events.try_recv().ok())
+        .filter(|event| matches!(event.event, Event::Playback { playback: None }))
+        .count();
+    assert_eq!(stopped, 1);
+    registry.shutdown().await;
+}

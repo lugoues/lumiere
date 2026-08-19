@@ -48,12 +48,13 @@ where
         .ok_or("light store path has no parent directory")?
         .join("animations");
     seed_animations(&animations_dir)?;
-    let labels = store::load(&store_path)?;
-    let (store_updates, store_task) = store::spawn(store_path, labels.clone());
+    let stored = store::load(&store_path)?;
+    let (store_updates, store_task) = store::spawn(store_path, stored.clone());
     let registry = RegistryHandle::spawn_with_config(
         transport,
         RegistryConfig {
-            labels,
+            labels: stored.labels,
+            presets: stored.presets,
             store_updates: Some(store_updates),
             animations_dir: Some(animations_dir),
             ..RegistryConfig::default()

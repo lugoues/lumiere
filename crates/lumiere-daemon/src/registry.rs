@@ -13,8 +13,8 @@ use futures::{StreamExt, future::join_all};
 use lumiere_core::{caps::ModelTable, playback_duration, schedule};
 use lumiere_proto::{
     AnimTarget, Animation, AnimationId, AnimationSummary, ConnState, Event, LightId, LightSnapshot,
-    Mode, PerLightResult, PlaybackOptions, PlaybackStatus, Selector, SeqEvent, SkipReason,
-    TargetBinding, WorldSnapshot,
+    Mode, PerLightResult, PlaybackOptions, PlaybackStatus, Preset, PresetEntry, PresetId,
+    PresetTarget, Selector, SeqEvent, SkipReason, TargetBinding, WorldSnapshot,
 };
 use lumiere_transport::{Discovered, ScanFilter, Transport};
 use tokio::sync::{Semaphore, broadcast, mpsc, oneshot, watch};
@@ -41,6 +41,7 @@ pub struct RegistryConfig {
     pub labels: HashMap<LightId, String>,
     pub store_updates: Option<mpsc::Sender<StoreUpdate>>,
     pub animations_dir: Option<PathBuf>,
+    pub presets: Vec<Preset>,
 }
 
 impl Default for RegistryConfig {
@@ -51,6 +52,7 @@ impl Default for RegistryConfig {
             labels: HashMap::new(),
             store_updates: None,
             animations_dir: None,
+            presets: Vec::new(),
         }
     }
 }
@@ -94,6 +96,28 @@ pub enum RegistryCmd {
     },
     StopPlayback {
         reply: oneshot::Sender<bool>,
+    },
+    ListPresets {
+        reply: oneshot::Sender<Vec<Preset>>,
+    },
+    SavePreset {
+        name: String,
+        selector: Selector,
+        reply: oneshot::Sender<Result<Preset, String>>,
+    },
+    RecallPreset {
+        id: PresetId,
+        wait: bool,
+        reply: oneshot::Sender<Result<Vec<PerLightResult>, String>>,
+    },
+    RenamePreset {
+        id: PresetId,
+        name: String,
+        reply: oneshot::Sender<Result<(), String>>,
+    },
+    DeletePreset {
+        id: PresetId,
+        reply: oneshot::Sender<Result<(), String>>,
     },
     Shutdown,
 }
@@ -172,6 +196,7 @@ impl RegistryHandle {
             .as_deref()
             .map(load_animations)
             .unwrap_or_default();
+        let presets = config.presets.clone();
         let registry = Registry {
             transport,
             config,
@@ -189,6 +214,7 @@ impl RegistryHandle {
             seq: 0,
             ring: VecDeque::with_capacity(EVENT_RING_CAPACITY),
             animations,
+            presets,
             active: None,
             next_playback_id: 1,
         };
@@ -327,6 +353,74 @@ impl RegistryHandle {
             .map_err(|_| "registry stopped before replying".to_owned())
     }
 
+    /// Lists presets in their user-defined order.
+    pub async fn list_presets(&self) -> Result<Vec<Preset>, String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::ListPresets { reply })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "registry stopped before replying".to_owned())
+    }
+
+    /// Captures the current modes of selected connected lights.
+    pub async fn save_preset(&self, name: String, selector: Selector) -> Result<Preset, String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::SavePreset {
+                name,
+                selector,
+                reply,
+            })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "registry stopped before replying".to_owned())?
+    }
+
+    /// Recalls a preset, optionally waiting for per-light results.
+    pub async fn recall_preset(
+        &self,
+        id: PresetId,
+        wait: bool,
+    ) -> Result<Vec<PerLightResult>, String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::RecallPreset { id, wait, reply })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "registry stopped before replying".to_owned())?
+    }
+
+    /// Renames a preset without changing its identifier.
+    pub async fn rename_preset(&self, id: PresetId, name: String) -> Result<(), String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::RenamePreset { id, name, reply })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "registry stopped before replying".to_owned())?
+    }
+
+    /// Deletes a preset.
+    pub async fn delete_preset(&self, id: PresetId) -> Result<(), String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::DeletePreset { id, reply })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "registry stopped before replying".to_owned())?
+    }
+
     /// Subscribes to complete world snapshots.
     pub fn world(&self) -> watch::Receiver<Arc<WorldSnapshot>> {
         self.world_rx.clone()
@@ -392,6 +486,7 @@ struct Registry {
     seq: u64,
     ring: VecDeque<SeqEvent>,
     animations: BTreeMap<AnimationId, Animation>,
+    presets: Vec<Preset>,
     active: Option<ActivePlayback>,
     next_playback_id: u64,
 }
@@ -485,7 +580,7 @@ impl Registry {
                 self.config.labels.insert(id.clone(), label.clone());
                 self.emit(index);
                 if let Some(store_updates) = &self.config.store_updates {
-                    let _ = store_updates.send(StoreUpdate { id, label }).await;
+                    let _ = store_updates.send(StoreUpdate::Label { id, label }).await;
                 }
                 let _ = reply.send(Ok(self.lights[index].snapshot.clone()));
             }
@@ -521,7 +616,141 @@ impl Registry {
                 };
                 let _ = reply.send(stopped);
             }
+            RegistryCmd::ListPresets { reply } => {
+                let _ = reply.send(self.presets.clone());
+            }
+            RegistryCmd::SavePreset {
+                name,
+                selector,
+                reply,
+            } => {
+                let result = self.save_preset(name, selector).await;
+                let _ = reply.send(result);
+            }
+            RegistryCmd::RecallPreset { id, wait, reply } => {
+                self.recall_preset(id, wait, reply).await;
+            }
+            RegistryCmd::RenamePreset { id, name, reply } => {
+                let result = self.rename_preset(&id, name).await;
+                let _ = reply.send(result);
+            }
+            RegistryCmd::DeletePreset { id, reply } => {
+                let result = self.delete_preset(&id).await;
+                let _ = reply.send(result);
+            }
             RegistryCmd::Shutdown => {}
+        }
+    }
+
+    async fn save_preset(&mut self, name: String, selector: Selector) -> Result<Preset, String> {
+        let name = name.trim().to_owned();
+        if name.is_empty() {
+            return Err("preset name may not be empty".to_owned());
+        }
+        let entries = self
+            .target_indices(&selector)
+            .into_iter()
+            .filter_map(|index| {
+                let light = &self.lights[index].snapshot;
+                (light.conn == ConnState::Connected)
+                    .then(|| {
+                        light.confirmed.or(light.desired).map(|mode| PresetEntry {
+                            target: PresetTarget::Light {
+                                id: light.id.clone(),
+                            },
+                            mode,
+                        })
+                    })
+                    .flatten()
+            })
+            .collect::<Vec<_>>();
+        if entries.is_empty() {
+            return Err("no connected light modes could be captured".to_owned());
+        }
+
+        let base = preset_slug(&name);
+        let mut candidate = base.clone();
+        let mut suffix = 2;
+        while self
+            .presets
+            .iter()
+            .any(|preset| preset.id.as_str() == candidate)
+        {
+            candidate = format!("{base}-{suffix}");
+            suffix += 1;
+        }
+        let preset = Preset {
+            id: PresetId::parse(&candidate)?,
+            name,
+            entries,
+        };
+        self.presets.push(preset.clone());
+        self.persist_presets().await;
+        Ok(preset)
+    }
+
+    async fn recall_preset(
+        &mut self,
+        id: PresetId,
+        wait: bool,
+        reply: oneshot::Sender<Result<Vec<PerLightResult>, String>>,
+    ) {
+        let Some(preset) = self.presets.iter().find(|preset| preset.id == id).cloned() else {
+            let _ = reply.send(Err(format!("preset {id} was not found")));
+            return;
+        };
+        let mut assignments = BTreeMap::new();
+        for entry in preset.entries {
+            match entry.target {
+                PresetTarget::Everything => {
+                    for (index, light) in self.lights.iter().enumerate() {
+                        if light.snapshot.conn == ConnState::Connected {
+                            assignments.insert(index, entry.mode);
+                        }
+                    }
+                }
+                PresetTarget::Light { id } => {
+                    if let Some(index) = self.index_of(&id) {
+                        assignments.insert(index, entry.mode);
+                    }
+                }
+            }
+        }
+        self.apply_modes(assignments.into_iter().collect(), wait, move |results| {
+            let _ = reply.send(Ok(results));
+        })
+        .await;
+    }
+
+    async fn rename_preset(&mut self, id: &PresetId, name: String) -> Result<(), String> {
+        let name = name.trim().to_owned();
+        if name.is_empty() {
+            return Err("preset name may not be empty".to_owned());
+        }
+        let preset = self
+            .presets
+            .iter_mut()
+            .find(|preset| &preset.id == id)
+            .ok_or_else(|| format!("preset {id} was not found"))?;
+        preset.name = name;
+        self.persist_presets().await;
+        Ok(())
+    }
+
+    async fn delete_preset(&mut self, id: &PresetId) -> Result<(), String> {
+        let Some(index) = self.presets.iter().position(|preset| &preset.id == id) else {
+            return Err(format!("preset {id} was not found"));
+        };
+        self.presets.remove(index);
+        self.persist_presets().await;
+        Ok(())
+    }
+
+    async fn persist_presets(&self) {
+        if let Some(store_updates) = &self.config.store_updates {
+            let _ = store_updates
+                .send(StoreUpdate::Presets(self.presets.clone()))
+                .await;
         }
     }
 
@@ -560,30 +789,43 @@ impl Registry {
         wait: bool,
         reply: oneshot::Sender<Vec<PerLightResult>>,
     ) {
-        let mut targets = self.target_indices(&selector);
+        let targets = self
+            .target_indices(&selector)
+            .into_iter()
+            .map(|index| (index, mode))
+            .collect();
+        self.apply_modes(targets, wait, move |results| {
+            let _ = reply.send(results);
+        })
+        .await;
+    }
+
+    async fn apply_modes<F>(&mut self, targets: Vec<(usize, Mode)>, wait: bool, finish: F)
+    where
+        F: FnOnce(Vec<PerLightResult>) + Send + 'static,
+    {
         if targets
             .iter()
-            .any(|index| self.active_leases(&self.lights[*index].snapshot.id))
+            .any(|(index, _)| self.active_leases(&self.lights[*index].snapshot.id))
         {
             self.cancel_active(PlaybackFinishReason::Cancelled, true)
                 .await;
-            targets = self.target_indices(&selector);
         }
-        for &index in &targets {
+        for &(index, mode) in &targets {
             self.lights[index].snapshot.desired = Some(mode);
             self.emit(index);
         }
 
         if !wait {
-            for index in targets {
+            for (index, mode) in targets {
                 self.lights[index].desired_tx.send_replace(Some(mode));
             }
-            let _ = reply.send(Vec::new());
+            finish(Vec::new());
             return;
         }
 
         let mut pending = Vec::with_capacity(targets.len());
-        for index in targets {
+        for (index, mode) in targets {
             // Keep the desired watch in sync so a later reconnect replays this mode,
             // not an older one. The actor dedupes the echo via last_written.
             self.lights[index].desired_tx.send_replace(Some(mode));
@@ -607,7 +849,7 @@ impl Registry {
         }
         self.tracker.spawn(async move {
             let results = join_all(pending.into_iter().map(PendingResult::resolve)).await;
-            let _ = reply.send(results);
+            finish(results);
         });
     }
 
@@ -1002,6 +1244,27 @@ fn decode_cancel_reason(reason: u8) -> PlaybackFinishReason {
     match reason {
         2 => PlaybackFinishReason::Chained,
         _ => PlaybackFinishReason::Cancelled,
+    }
+}
+
+fn preset_slug(name: &str) -> String {
+    let mut slug = String::new();
+    let mut separator = false;
+    for character in name.chars() {
+        if character.is_ascii_alphanumeric() {
+            if separator && !slug.is_empty() {
+                slug.push('-');
+            }
+            slug.push(character.to_ascii_lowercase());
+            separator = false;
+        } else {
+            separator = true;
+        }
+    }
+    if slug.is_empty() {
+        "preset".to_owned()
+    } else {
+        slug
     }
 }
 

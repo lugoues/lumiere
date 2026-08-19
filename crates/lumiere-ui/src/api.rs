@@ -1,6 +1,9 @@
 use dioxus::prelude::*;
 use gloo_net::http::{Request, Response};
-use lumiere_proto::{CommandRequest, CommandResponse, WorldSnapshot};
+use lumiere_proto::{
+    AnimationId, AnimationSummary, CommandRequest, CommandResponse, PlaybackOptions,
+    PlaybackStatus, Preset, PresetId, Selector, TargetBinding, WorldSnapshot,
+};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::fmt;
 
@@ -73,6 +76,111 @@ impl ApiClient {
             .json(&command)
             .map_err(network)?;
         decode(request.send().await.map_err(network)?).await
+    }
+
+    pub async fn get_animations(self) -> Result<Vec<AnimationSummary>, ApiError> {
+        let response = self
+            .request("/api/v1/animations", Request::get)?
+            .send()
+            .await
+            .map_err(network)?;
+        decode(response).await
+    }
+
+    pub async fn play_animation(
+        self,
+        id: &AnimationId,
+        options: PlaybackOptions,
+        binding: TargetBinding,
+    ) -> Result<PlaybackStatus, ApiError> {
+        #[derive(Serialize)]
+        struct PlayRequest {
+            options: PlaybackOptions,
+            binding: TargetBinding,
+        }
+
+        let path = format!("/api/v1/animations/{id}/play");
+        let request = self
+            .request(&path, Request::post)?
+            .json(&PlayRequest { options, binding })
+            .map_err(network)?;
+        decode(request.send().await.map_err(network)?).await
+    }
+
+    pub async fn stop_playback(self) -> Result<(), ApiError> {
+        ensure_success(
+            self.request("/api/v1/playback/stop", Request::post)?
+                .send()
+                .await
+                .map_err(network)?,
+        )
+        .await
+    }
+
+    pub async fn get_presets(self) -> Result<Vec<Preset>, ApiError> {
+        let response = self
+            .request("/api/v1/presets", Request::get)?
+            .send()
+            .await
+            .map_err(network)?;
+        decode(response).await
+    }
+
+    pub async fn capture_preset(
+        self,
+        name: String,
+        selector: Selector,
+    ) -> Result<Preset, ApiError> {
+        #[derive(Serialize)]
+        struct CaptureRequest {
+            name: String,
+            selector: Selector,
+        }
+
+        let request = self
+            .request("/api/v1/presets", Request::post)?
+            .json(&CaptureRequest { name, selector })
+            .map_err(network)?;
+        decode(request.send().await.map_err(network)?).await
+    }
+
+    pub async fn recall_preset(self, id: &PresetId) -> Result<CommandResponse, ApiError> {
+        #[derive(Serialize)]
+        struct RecallRequest {
+            wait: bool,
+        }
+
+        let path = format!("/api/v1/presets/{id}/recall");
+        let request = self
+            .request(&path, Request::post)?
+            .json(&RecallRequest { wait: false })
+            .map_err(network)?;
+        decode(request.send().await.map_err(network)?).await
+    }
+
+    pub async fn rename_preset(self, id: &PresetId, name: String) -> Result<Preset, ApiError> {
+        #[derive(Serialize)]
+        struct RenameRequest {
+            name: String,
+        }
+
+        let path = format!("/api/v1/presets/{id}");
+        let request = self
+            .request(&path, Request::patch)?
+            .json(&RenameRequest { name })
+            .map_err(network)?;
+        decode(request.send().await.map_err(network)?).await
+    }
+
+    pub async fn delete_preset(self, id: &PresetId) -> Result<(), ApiError> {
+        let path = format!("/api/v1/presets/{id}");
+        ensure_success(
+            self.request(&path, Request::delete)?
+                .send()
+                .await
+                .map_err(network)?,
+        )
+        .await
     }
 
     pub async fn ws_ticket(self) -> Result<String, ApiError> {

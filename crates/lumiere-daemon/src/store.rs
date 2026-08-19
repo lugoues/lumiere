@@ -7,7 +7,9 @@ use std::{
 };
 
 use directories::ProjectDirs;
-use lumiere_proto::LightId;
+use lumiere_proto::{
+    Hue, Kelvin, LightId, Mode, Percent, Preset, PresetEntry, PresetId, PresetTarget,
+};
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use thiserror::Error;
@@ -16,16 +18,28 @@ use tokio::{sync::mpsc, task::JoinHandle};
 const STORE_CHANNEL_CAPACITY: usize = 64;
 const STORE_DEBOUNCE: Duration = Duration::from_millis(500);
 
-/// A persisted light-field update.
+/// The complete persistent state loaded for the registry.
 #[derive(Clone, Debug)]
-pub struct StoreUpdate {
-    pub id: LightId,
-    pub label: String,
+pub struct StoreData {
+    pub labels: HashMap<LightId, String>,
+    pub presets: Vec<Preset>,
+}
+
+/// A persisted registry update.
+#[derive(Clone, Debug)]
+pub enum StoreUpdate {
+    Label { id: LightId, label: String },
+    Presets(Vec<Preset>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct StoredLight {
     label: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct StoredPresets {
+    presets: Vec<Preset>,
 }
 
 /// Returns the configured label-store path.
@@ -40,62 +54,103 @@ pub fn default_path() -> Result<PathBuf, StoreError> {
     Ok(directory.join("lights.toml"))
 }
 
-/// Loads saved labels from an injectable path.
-pub fn load(path: &Path) -> Result<HashMap<LightId, String>, StoreError> {
-    let encoded = match fs::read_to_string(path) {
-        Ok(encoded) => encoded,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(HashMap::new()),
+/// Loads saved labels and ordered presets from an injectable store path.
+pub fn load(path: &Path) -> Result<StoreData, StoreError> {
+    let labels = match fs::read_to_string(path) {
+        Ok(encoded) => {
+            let stored: BTreeMap<String, StoredLight> = toml::from_str(&encoded)?;
+            stored
+                .into_iter()
+                .map(|(id, light)| Ok((LightId::parse(&id)?, light.label)))
+                .collect::<Result<_, StoreError>>()?
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => HashMap::new(),
         Err(error) => return Err(error.into()),
     };
-    let stored: BTreeMap<String, StoredLight> = toml::from_str(&encoded)?;
-    stored
-        .into_iter()
-        .map(|(id, light)| Ok((LightId::parse(&id)?, light.label)))
-        .collect()
+    let presets_path = presets_path(path)?;
+    let presets = match fs::read_to_string(presets_path) {
+        Ok(encoded) => toml::from_str::<StoredPresets>(&encoded)?.presets,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => factory_presets(),
+        Err(error) => return Err(error.into()),
+    };
+    Ok(StoreData { labels, presets })
 }
 
-/// Starts the debounced persistence task for an injectable path.
+/// Starts the debounced persistence task for injectable store paths.
 pub fn spawn(
     path: PathBuf,
-    labels: HashMap<LightId, String>,
+    data: StoreData,
 ) -> (
     mpsc::Sender<StoreUpdate>,
     JoinHandle<Result<(), StoreError>>,
 ) {
     let (tx, rx) = mpsc::channel(STORE_CHANNEL_CAPACITY);
-    let task = tokio::spawn(run(path, labels, rx));
+    let task = tokio::spawn(run(path, data, rx));
     (tx, task)
 }
 
 async fn run(
     path: PathBuf,
-    mut labels: HashMap<LightId, String>,
+    mut data: StoreData,
     mut rx: mpsc::Receiver<StoreUpdate>,
 ) -> Result<(), StoreError> {
+    let presets_path = presets_path(&path)?;
+    if !presets_path.exists() {
+        write_presets(&presets_path, &data.presets)?;
+    }
     while let Some(update) = rx.recv().await {
-        labels.insert(update.id, update.label);
+        let (mut labels_dirty, mut presets_dirty) = apply_update(&mut data, update);
         loop {
             tokio::select! {
                 next = rx.recv() => match next {
                     Some(update) => {
-                        labels.insert(update.id, update.label);
+                        let dirty = apply_update(&mut data, update);
+                        labels_dirty |= dirty.0;
+                        presets_dirty |= dirty.1;
                     }
                     None => {
-                        write_store(&path, &labels)?;
+                        write_dirty(&path, &presets_path, &data, labels_dirty, presets_dirty)?;
                         return Ok(());
                     }
                 },
                 () = tokio::time::sleep(STORE_DEBOUNCE) => break,
             }
         }
-        write_store(&path, &labels)?;
+        write_dirty(&path, &presets_path, &data, labels_dirty, presets_dirty)?;
     }
     Ok(())
 }
 
-fn write_store(path: &Path, labels: &HashMap<LightId, String>) -> Result<(), StoreError> {
-    let parent = path.parent().ok_or(StoreError::InvalidPath)?;
-    fs::create_dir_all(parent)?;
+fn apply_update(data: &mut StoreData, update: StoreUpdate) -> (bool, bool) {
+    match update {
+        StoreUpdate::Label { id, label } => {
+            data.labels.insert(id, label);
+            (true, false)
+        }
+        StoreUpdate::Presets(presets) => {
+            data.presets = presets;
+            (false, true)
+        }
+    }
+}
+
+fn write_dirty(
+    path: &Path,
+    presets_path: &Path,
+    data: &StoreData,
+    labels_dirty: bool,
+    presets_dirty: bool,
+) -> Result<(), StoreError> {
+    if labels_dirty {
+        write_labels(path, &data.labels)?;
+    }
+    if presets_dirty {
+        write_presets(presets_path, &data.presets)?;
+    }
+    Ok(())
+}
+
+fn write_labels(path: &Path, labels: &HashMap<LightId, String>) -> Result<(), StoreError> {
     let stored: BTreeMap<_, _> = labels
         .iter()
         .map(|(id, label)| {
@@ -107,7 +162,21 @@ fn write_store(path: &Path, labels: &HashMap<LightId, String>) -> Result<(), Sto
             )
         })
         .collect();
-    let encoded = toml::to_string_pretty(&stored)?;
+    atomic_write(path, &toml::to_string_pretty(&stored)?)
+}
+
+fn write_presets(path: &Path, presets: &[Preset]) -> Result<(), StoreError> {
+    atomic_write(
+        path,
+        &toml::to_string_pretty(&StoredPresets {
+            presets: presets.to_vec(),
+        })?,
+    )
+}
+
+fn atomic_write(path: &Path, encoded: &str) -> Result<(), StoreError> {
+    let parent = path.parent().ok_or(StoreError::InvalidPath)?;
+    fs::create_dir_all(parent)?;
     let mut temporary = NamedTempFile::new_in(parent)?;
     temporary.write_all(encoded.as_bytes())?;
     temporary.as_file().sync_all()?;
@@ -115,7 +184,50 @@ fn write_store(path: &Path, labels: &HashMap<LightId, String>) -> Result<(), Sto
     Ok(())
 }
 
-/// Failure to load or persist the light store.
+fn presets_path(path: &Path) -> Result<PathBuf, StoreError> {
+    path.parent()
+        .map(|parent| parent.join("presets.toml"))
+        .ok_or(StoreError::InvalidPath)
+}
+
+/// Returns the eight presets installed when no preset store exists.
+pub fn factory_presets() -> Vec<Preset> {
+    let cct = |id: &str, name: &str, temp: u16, bri: u8| Preset {
+        id: PresetId::parse(id).expect("factory preset id is valid"),
+        name: name.to_owned(),
+        entries: vec![PresetEntry {
+            target: PresetTarget::Everything,
+            mode: Mode::Cct {
+                temp: Kelvin::new(temp).expect("factory kelvin is valid"),
+                bri: Percent::new(bri).expect("factory brightness is valid"),
+            },
+        }],
+    };
+    let hsi = |id: &str, name: &str, hue: u16| Preset {
+        id: PresetId::parse(id).expect("factory preset id is valid"),
+        name: name.to_owned(),
+        entries: vec![PresetEntry {
+            target: PresetTarget::Everything,
+            mode: Mode::Hsi {
+                hue: Hue::new(hue).expect("factory hue is valid"),
+                sat: Percent::new(100).expect("factory saturation is valid"),
+                bri: Percent::new(20).expect("factory brightness is valid"),
+            },
+        }],
+    };
+    vec![
+        cct("daylight", "Daylight", 5600, 20),
+        cct("warm", "Warm", 3200, 20),
+        cct("blackout", "Blackout", 5600, 0),
+        hsi("red", "Red", 0),
+        hsi("blue", "Blue", 240),
+        hsi("green", "Green", 120),
+        hsi("purple", "Purple", 300),
+        hsi("cyan", "Cyan", 160),
+    ]
+}
+
+/// Failure to load or persist registry state.
 #[derive(Debug, Error)]
 pub enum StoreError {
     #[error("could not determine the data directory")]
