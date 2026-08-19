@@ -25,8 +25,14 @@ fn main() -> ExitCode {
 fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(task) = args.next() else {
-        return Err("usage: cargo xtask <ui [--debug] | convert-anims>".into());
+        return Err(
+            "usage: cargo xtask <ui [--debug] | convert-anims | dump-schedule FILE>".into(),
+        );
     };
+    if task == "dump-schedule" {
+        let file = args.next().ok_or("usage: cargo xtask dump-schedule FILE")?;
+        return dump_schedule(&file);
+    }
     if task == "convert-anims" {
         if let Some(extra) = args.next() {
             return Err(format!("unexpected argument {extra:?}"));
@@ -340,6 +346,38 @@ fn copy_directory(source: &Path, destination: &Path) -> io::Result<()> {
         } else {
             fs::copy(source_path, destination_path)?;
         }
+    }
+    Ok(())
+}
+
+/// Prints one JSON line per schedule frame for the differential harness
+/// (assets/dev/diff_engine.py) to compare against the Python reference engine.
+fn dump_schedule(file: &str) -> Result<(), String> {
+    let source = std::fs::read_to_string(file).map_err(|error| error.to_string())?;
+    let animation: lumiere_proto::Animation =
+        serde_json::from_str(&source).map_err(|error| error.to_string())?;
+    let options = lumiere_proto::PlaybackOptions {
+        loop_override: Some(false),
+        ..lumiere_proto::PlaybackOptions::default()
+    };
+    for frame in lumiere_core::anim::schedule(&animation, &options) {
+        let ops: Vec<serde_json::Value> = frame
+            .ops
+            .iter()
+            .map(|(target, mode)| {
+                serde_json::json!({
+                    "target": match target {
+                        lumiere_proto::AnimTarget::All => "*".to_owned(),
+                        lumiere_proto::AnimTarget::Slot(slot) => slot.to_string(),
+                    },
+                    "mode": mode,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::json!({ "at_ms": frame.at_ms, "ops": ops })
+        );
     }
     Ok(())
 }
