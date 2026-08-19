@@ -37,26 +37,28 @@ struct StoredLight {
     label: String,
 }
 
+const LIGHTS_FILE: &str = "lights.toml";
+const PRESETS_FILE: &str = "presets.toml";
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct StoredPresets {
     presets: Vec<Preset>,
 }
 
-/// Returns the configured label-store path.
-pub fn default_path() -> Result<PathBuf, StoreError> {
-    let directory = if let Some(path) = std::env::var_os("LUMIERE_DATA_DIR") {
-        PathBuf::from(path)
+/// Returns the configured data directory holding all store files.
+pub fn default_dir() -> Result<PathBuf, StoreError> {
+    if let Some(path) = std::env::var_os("LUMIERE_DATA_DIR") {
+        Ok(PathBuf::from(path))
     } else {
         ProjectDirs::from("", "", "lumiere")
             .map(|dirs| dirs.data_dir().to_owned())
-            .ok_or(StoreError::NoDataDirectory)?
-    };
-    Ok(directory.join("lights.toml"))
+            .ok_or(StoreError::NoDataDirectory)
+    }
 }
 
-/// Loads saved labels and ordered presets from an injectable store path.
-pub fn load(path: &Path) -> Result<StoreData, StoreError> {
-    let labels = match fs::read_to_string(path) {
+/// Loads saved labels and ordered presets from an injectable data directory.
+pub fn load(dir: &Path) -> Result<StoreData, StoreError> {
+    let labels = match fs::read_to_string(dir.join(LIGHTS_FILE)) {
         Ok(encoded) => {
             let stored: BTreeMap<String, StoredLight> = toml::from_str(&encoded)?;
             stored
@@ -67,8 +69,7 @@ pub fn load(path: &Path) -> Result<StoreData, StoreError> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => HashMap::new(),
         Err(error) => return Err(error.into()),
     };
-    let presets_path = presets_path(path)?;
-    let presets = match fs::read_to_string(presets_path) {
+    let presets = match fs::read_to_string(dir.join(PRESETS_FILE)) {
         Ok(encoded) => toml::from_str::<StoredPresets>(&encoded)?.presets,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => factory_presets(),
         Err(error) => return Err(error.into()),
@@ -76,25 +77,25 @@ pub fn load(path: &Path) -> Result<StoreData, StoreError> {
     Ok(StoreData { labels, presets })
 }
 
-/// Starts the debounced persistence task for injectable store paths.
+/// Starts the debounced persistence task for an injectable data directory.
 pub fn spawn(
-    path: PathBuf,
+    dir: PathBuf,
     data: StoreData,
 ) -> (
     mpsc::Sender<StoreUpdate>,
     JoinHandle<Result<(), StoreError>>,
 ) {
     let (tx, rx) = mpsc::channel(STORE_CHANNEL_CAPACITY);
-    let task = tokio::spawn(run(path, data, rx));
+    let task = tokio::spawn(run(dir, data, rx));
     (tx, task)
 }
 
 async fn run(
-    path: PathBuf,
+    dir: PathBuf,
     mut data: StoreData,
     mut rx: mpsc::Receiver<StoreUpdate>,
 ) -> Result<(), StoreError> {
-    let presets_path = presets_path(&path)?;
+    let presets_path = dir.join(PRESETS_FILE);
     if !presets_path.exists() {
         write_presets(&presets_path, &data.presets)?;
     }
@@ -109,14 +110,20 @@ async fn run(
                         presets_dirty |= dirty.1;
                     }
                     None => {
-                        write_dirty(&path, &presets_path, &data, labels_dirty, presets_dirty)?;
+                        write_dirty(&dir.join(LIGHTS_FILE), &presets_path, &data, labels_dirty, presets_dirty)?;
                         return Ok(());
                     }
                 },
                 () = tokio::time::sleep(STORE_DEBOUNCE) => break,
             }
         }
-        write_dirty(&path, &presets_path, &data, labels_dirty, presets_dirty)?;
+        write_dirty(
+            &dir.join(LIGHTS_FILE),
+            &presets_path,
+            &data,
+            labels_dirty,
+            presets_dirty,
+        )?;
     }
     Ok(())
 }
@@ -182,12 +189,6 @@ fn atomic_write(path: &Path, encoded: &str) -> Result<(), StoreError> {
     temporary.as_file().sync_all()?;
     temporary.persist(path).map_err(|error| error.error)?;
     Ok(())
-}
-
-fn presets_path(path: &Path) -> Result<PathBuf, StoreError> {
-    path.parent()
-        .map(|parent| parent.join("presets.toml"))
-        .ok_or(StoreError::InvalidPath)
 }
 
 /// Returns the eight presets installed when no preset store exists.

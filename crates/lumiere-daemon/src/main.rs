@@ -42,14 +42,11 @@ async fn serve<T>(transport: T, config: Config) -> Result<(), Box<dyn Error>>
 where
     T: Transport,
 {
-    let store_path = store::default_path()?;
-    let animations_dir = store_path
-        .parent()
-        .ok_or("light store path has no parent directory")?
-        .join("animations");
+    let data_dir = store::default_dir()?;
+    let animations_dir = data_dir.join("animations");
     seed_animations(&animations_dir)?;
-    let stored = store::load(&store_path)?;
-    let (store_updates, store_task) = store::spawn(store_path, stored.clone());
+    let stored = store::load(&data_dir)?;
+    let (store_updates, store_task) = store::spawn(data_dir, stored.clone());
     let registry = RegistryHandle::spawn_with_config(
         transport,
         RegistryConfig {

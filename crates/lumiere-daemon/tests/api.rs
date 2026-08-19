@@ -36,11 +36,11 @@ impl TestServer {
     }
 }
 
-async fn spawn_test_server(store_path: Option<PathBuf>) -> Option<TestServer> {
+async fn spawn_test_server(store_dir: Option<PathBuf>) -> Option<TestServer> {
     let data = tempfile::tempdir().unwrap();
-    let store_path = store_path.unwrap_or_else(|| data.path().join("lights.toml"));
-    let stored = store::load(&store_path).unwrap();
-    let (store_updates, store_task) = store::spawn(store_path.clone(), stored.clone());
+    let store_dir = store_dir.unwrap_or_else(|| data.path().to_path_buf());
+    let stored = store::load(&store_dir).unwrap();
+    let (store_updates, store_task) = store::spawn(store_dir.clone(), stored.clone());
     let sim = sim_transport();
     let registry = RegistryHandle::spawn_with_config(
         sim.clone(),
@@ -288,8 +288,9 @@ async fn animation_list_play_and_stop_round_trip() {
 #[tokio::test]
 async fn labels_are_persisted_and_restored() {
     let shared_data = tempfile::tempdir().unwrap();
-    let path = shared_data.path().join("lights.toml");
-    let Some(first) = spawn_test_server(Some(path.clone())).await else {
+    let dir = shared_data.path().to_path_buf();
+    let path = dir.join("lights.toml");
+    let Some(first) = spawn_test_server(Some(dir.clone())).await else {
         return;
     };
     let client = Client::new();
@@ -310,14 +311,14 @@ async fn labels_are_persisted_and_restored() {
     })
     .await
     .unwrap();
-    let persisted = store::load(&path).unwrap();
+    let persisted = store::load(&dir).unwrap();
     assert_eq!(
         persisted.labels.get(&LightId::sim("1")).map(String::as_str),
         Some("Key")
     );
     first.stop().await;
 
-    let Some(second) = spawn_test_server(Some(path)).await else {
+    let Some(second) = spawn_test_server(Some(dir)).await else {
         return;
     };
     let world = scan_and_wait(&client, &second).await;
@@ -431,8 +432,8 @@ async fn preset_factory_capture_recall_rename_and_delete_round_trip() {
 #[tokio::test]
 async fn captured_presets_persist_across_registries() {
     let shared_data = tempfile::tempdir().unwrap();
-    let path = shared_data.path().join("lights.toml");
-    let Some(first) = spawn_test_server(Some(path.clone())).await else {
+    let dir = shared_data.path().to_path_buf();
+    let Some(first) = spawn_test_server(Some(dir.clone())).await else {
         return;
     };
     let client = Client::new();
@@ -454,7 +455,7 @@ async fn captured_presets_persist_across_registries() {
     assert_eq!(response.status(), StatusCode::CREATED);
     first.stop().await;
 
-    let Some(second) = spawn_test_server(Some(path)).await else {
+    let Some(second) = spawn_test_server(Some(dir)).await else {
         return;
     };
     let presets = client
