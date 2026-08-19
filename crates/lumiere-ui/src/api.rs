@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 use gloo_net::http::{Request, Response};
 use lumiere_proto::{
-    AnimationId, AnimationSummary, CommandRequest, CommandResponse, PlaybackOptions,
-    PlaybackStatus, Preset, PresetId, Selector, TargetBinding, WorldSnapshot,
+    AnimationId, AnimationSummary, CommandRequest, CommandResponse, LightId, LightSnapshot,
+    PlaybackOptions, PlaybackStatus, Preset, PresetId, Selector, TargetBinding, WorldSnapshot,
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::fmt;
@@ -53,6 +53,20 @@ impl ApiClient {
             .await
             .map_err(network)?;
         decode(response).await
+    }
+
+    pub async fn set_label(self, id: &LightId, label: String) -> Result<LightSnapshot, ApiError> {
+        #[derive(Serialize)]
+        struct LabelRequest {
+            label: String,
+        }
+
+        let path = format!("/api/v1/lights/{id}");
+        let request = self
+            .request(&path, Request::patch)?
+            .json(&LabelRequest { label })
+            .map_err(network)?;
+        decode(request.send().await.map_err(network)?).await
     }
 
     pub async fn post_scan(self) -> Result<(), ApiError> {
