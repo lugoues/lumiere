@@ -30,6 +30,7 @@ pub fn App() -> Element {
         if state.token.peek().is_none() && crate::api::server_is_open().await {
             state.token.set(Some(String::new()));
         }
+        state.auth_probed.set(true);
     });
 
     rsx! {
@@ -50,8 +51,12 @@ pub fn App() -> Element {
         }
         if authenticated {
             LiveApp {}
-        } else {
+        } else if state.auth_probed.read().to_owned() {
             TokenGate {}
+        } else {
+            // Probing whether the daemon requires a token; showing the gate
+            // now would flash it on open servers.
+            main { class: "token-page", p { class: "probe-note", "Connecting..." } }
         }
     }
 }
