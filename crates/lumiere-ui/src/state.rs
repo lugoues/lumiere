@@ -30,6 +30,7 @@ impl AppState {
             world: Signal::new(WorldSnapshot {
                 seq: 0,
                 lights: Vec::new(),
+                playback: None,
             }),
             conn: Signal::new(ConnStatus::Connecting),
             token: Signal::new(token),

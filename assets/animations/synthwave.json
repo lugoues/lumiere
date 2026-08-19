@@ -1,0 +1,57 @@
+{
+  "id": "synthwave",
+  "name": "Synthwave",
+  "description": "80s neon pink, purple, and orange retro vibes",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 2500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 320,
+          "sat": 100,
+          "bri": 60
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 2500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 280,
+          "sat": 80,
+          "bri": 50
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 2500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 90,
+          "bri": 55
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 2500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 300,
+          "sat": 90,
+          "bri": 45
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "id": "warm-cascade",
+  "name": "Warm Cascade",
+  "description": "CCT temperature cascading warm to cool across lights",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 75
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 80
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 4500,
+          "bri": 85
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 5200,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 5200,
+          "bri": 80
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 75
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 80
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 4500,
+          "bri": 85
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 4500,
+          "bri": 85
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 5200,
+          "bri": 80
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 75
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 80
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4500,
+          "bri": 85
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 5200,
+          "bri": 80
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 75
+        }
+      }
+    }
+  ]
+}

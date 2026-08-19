@@ -1,0 +1,31 @@
+{
+  "id": "product-photo",
+  "name": "Product Photo",
+  "description": "Bright neutral daylight with minimal variation",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 20000,
+      "fade_ms": 10000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 5200,
+          "bri": 100
+        }
+      }
+    },
+    {
+      "hold_ms": 20000,
+      "fade_ms": 10000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 5400,
+          "bri": 98
+        }
+      }
+    }
+  ]
+}

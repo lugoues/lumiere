@@ -1,0 +1,69 @@
+{
+  "id": "split-personality",
+  "name": "Split Personality",
+  "description": "Left side warm right side cool with independent breathing",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 80,
+          "bri": 70
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 80,
+          "bri": 40
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 70,
+          "bri": 40
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 70,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 80,
+          "bri": 40
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 80,
+          "bri": 70
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 70,
+          "bri": 70
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 70,
+          "bri": 40
+        }
+      }
+    }
+  ]
+}

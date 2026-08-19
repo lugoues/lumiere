@@ -1,0 +1,129 @@
+{
+  "id": "color-chase",
+  "name": "Color Chase",
+  "description": "Sequential color advance across 4 lights",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 400,
+      "fade_ms": 300,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 90,
+          "sat": 100,
+          "bri": 80
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 270,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 400,
+      "fade_ms": 300,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 270,
+          "sat": 100,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 80
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 90,
+          "sat": 100,
+          "bri": 80
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 400,
+      "fade_ms": 300,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 270,
+          "sat": 100,
+          "bri": 80
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 80
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 90,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 400,
+      "fade_ms": 300,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 90,
+          "sat": 100,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 270,
+          "sat": 100,
+          "bri": 80
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    }
+  ]
+}

@@ -130,6 +130,7 @@ pub fn apply_server_message(world: &mut WorldSnapshot, message: &ServerMsg) {
                     Event::LightRemoved { id } => {
                         world.lights.retain(|light| light.id != *id);
                     }
+                    Event::Playback { playback } => world.playback.clone_from(playback),
                 }
                 world.seq = sequence_event.seq;
             }
@@ -175,6 +176,7 @@ mod tests {
         let mut world = WorldSnapshot {
             seq: 0,
             lights: Vec::new(),
+            playback: None,
         };
         apply_server_message(
             &mut world,
@@ -186,6 +188,7 @@ mod tests {
                 snapshot: Some(WorldSnapshot {
                     seq: 1,
                     lights: vec![light("key", "Key")],
+                    playback: None,
                 }),
             },
         );
@@ -222,6 +225,7 @@ mod tests {
         let replacement = WorldSnapshot {
             seq: 9,
             lights: vec![light("rim", "Rim")],
+            playback: None,
         };
         apply_server_message(
             &mut world,

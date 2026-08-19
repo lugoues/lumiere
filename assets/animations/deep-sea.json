@@ -1,0 +1,69 @@
+{
+  "id": "deep-sea",
+  "name": "Deep Sea",
+  "description": "Dark underwater blues and teals with slow drifting movement",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 1000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 195,
+          "sat": 90,
+          "bri": 30
+        }
+      }
+    },
+    {
+      "hold_ms": 1000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 210,
+          "sat": 85,
+          "bri": 20
+        }
+      }
+    },
+    {
+      "hold_ms": 1000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 95,
+          "bri": 35
+        }
+      }
+    },
+    {
+      "hold_ms": 500,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 200,
+          "sat": 80,
+          "bri": 15
+        }
+      }
+    },
+    {
+      "hold_ms": 1000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 190,
+          "sat": 92,
+          "bri": 40
+        }
+      }
+    }
+  ]
+}

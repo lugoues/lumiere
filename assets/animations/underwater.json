@@ -1,0 +1,69 @@
+{
+  "id": "underwater",
+  "name": "Underwater",
+  "description": "Deep ocean blues and greens independently shifting",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 190,
+          "sat": 80,
+          "bri": 30
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 210,
+          "sat": 70,
+          "bri": 40
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 170,
+          "sat": 75,
+          "bri": 25
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 200,
+          "sat": 65,
+          "bri": 35
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 210,
+          "sat": 70,
+          "bri": 40
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 170,
+          "sat": 75,
+          "bri": 25
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 200,
+          "sat": 65,
+          "bri": 35
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 190,
+          "sat": 80,
+          "bri": 30
+        }
+      }
+    }
+  ]
+}

@@ -1,9 +1,10 @@
-use std::time::Duration;
+use std::{collections::BTreeMap, num::NonZeroU8, time::Duration};
 
 use lumiere_core::wire::Decoded;
 use lumiere_daemon::{RegistryConfig, RegistryHandle};
 use lumiere_proto::{
-    ConnState, Event, Hue, Kelvin, LightId, Mode, PerLightResult, Percent, Selector, SkipReason,
+    AnimTarget, Animation, AnimationId, ConnState, Event, Hue, Kelvin, Keyframe, LightId, Mode,
+    PerLightResult, Percent, PlaybackOptions, Selector, SkipReason, TargetBinding,
 };
 use lumiere_transport::sim::{SimConfig, SimLightSpec, SimTransport};
 use tokio::time::advance;
@@ -46,6 +47,62 @@ async fn setup(lights: Vec<SimLightSpec>) -> (SimTransport, RegistryHandle) {
     })
     .await;
     (sim, registry)
+}
+
+async fn setup_animation(
+    lights: Vec<SimLightSpec>,
+    animation: &Animation,
+) -> (SimTransport, RegistryHandle, tempfile::TempDir) {
+    let light_count = lights.len();
+    let directory = tempfile::tempdir().unwrap();
+    std::fs::write(
+        directory.path().join(format!("{}.json", animation.id)),
+        serde_json::to_vec(animation).unwrap(),
+    )
+    .unwrap();
+    let sim = SimTransport::new(SimConfig {
+        lights,
+        write_latency: Duration::ZERO,
+        fail_every_nth_write: None,
+    });
+    let registry = RegistryHandle::spawn_with_config(
+        sim.clone(),
+        RegistryConfig {
+            animations_dir: Some(directory.path().to_owned()),
+            ..RegistryConfig::default()
+        },
+    );
+    registry.discover(Duration::from_secs(60)).await.unwrap();
+    wait_until(|| {
+        let world = registry.world();
+        world.borrow().lights.len() == light_count
+            && world
+                .borrow()
+                .lights
+                .iter()
+                .all(|light| light.conn == ConnState::Connected)
+    })
+    .await;
+    (sim, registry, directory)
+}
+
+fn hsi(hue: u16) -> Mode {
+    Mode::Hsi {
+        hue: Hue::new(hue).unwrap(),
+        sat: Percent::new(100).unwrap(),
+        bri: Percent::new(100).unwrap(),
+    }
+}
+
+fn test_animation(keyframes: Vec<Keyframe>, slot_count: u8) -> Animation {
+    Animation {
+        id: AnimationId::parse("test-animation").unwrap(),
+        name: "Test Animation".to_owned(),
+        description: "Registry playback fixture".to_owned(),
+        loop_default: false,
+        slot_count,
+        keyframes,
+    }
 }
 
 async fn wait_until(mut condition: impl FnMut() -> bool) {
@@ -440,5 +497,243 @@ async fn initial_connect_failure_retries_until_connected() {
     advance(Duration::from_millis(500)).await;
     wait_until(|| matches!(conn_of(&registry), Some(ConnState::Connected))).await;
     assert!(sim.light(&id).is_connected());
+    registry.shutdown().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn animation_playback_updates_all_lights_and_world_state() {
+    let animation = test_animation(
+        vec![
+            Keyframe {
+                hold_ms: 100,
+                fade_ms: 0,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(0))]),
+            },
+            Keyframe {
+                hold_ms: 50,
+                fade_ms: 400,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(100))]),
+            },
+        ],
+        0,
+    );
+    let lights = (1..=4)
+        .map(|index| spec(&index.to_string(), "NEEWER-RGB660 PRO"))
+        .collect();
+    let (sim, registry, _directory) = setup_animation(lights, &animation).await;
+    let mut events = registry.events();
+    let status = registry
+        .play(
+            animation.id.clone(),
+            PlaybackOptions {
+                revert_on_finish: false,
+                ..PlaybackOptions::default()
+            },
+            TargetBinding::default(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(registry.world().borrow().playback.as_ref(), Some(&status));
+
+    wait_until(|| sim.light(&LightId::sim("1")).timeline().len() == 1).await;
+    advance(Duration::from_millis(100)).await;
+    wait_until(|| sim.light(&LightId::sim("1")).timeline().len() == 2).await;
+    advance(Duration::from_millis(200)).await;
+    wait_until(|| sim.light(&LightId::sim("1")).timeline().len() == 3).await;
+    advance(Duration::from_millis(250)).await;
+    wait_until(|| registry.world().borrow().playback.is_none()).await;
+
+    for index in 1..=4 {
+        let hues = sim
+            .light(&LightId::sim(&index.to_string()))
+            .timeline()
+            .into_iter()
+            .map(|(_, mode)| match mode {
+                Decoded::Hsi { hue, .. } => hue,
+                other => panic!("unexpected animation write: {other:?}"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(hues, [0, 50, 100]);
+    }
+    let playback_events = std::iter::from_fn(|| events.try_recv().ok())
+        .filter(|event| matches!(event.event, Event::Playback { .. }))
+        .collect::<Vec<_>>();
+    assert!(matches!(
+        playback_events.as_slice(),
+        [
+            lumiere_proto::SeqEvent {
+                event: Event::Playback { playback: Some(_) },
+                ..
+            },
+            lumiere_proto::SeqEvent {
+                event: Event::Playback { playback: None },
+                ..
+            }
+        ]
+    ));
+    registry.shutdown().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn stop_mid_fade_reverts_and_prevents_late_frames() {
+    let animation = test_animation(
+        vec![
+            Keyframe {
+                hold_ms: 50,
+                fade_ms: 0,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(0))]),
+            },
+            Keyframe {
+                hold_ms: 50,
+                fade_ms: 1_000,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(100))]),
+            },
+        ],
+        0,
+    );
+    let id = LightId::sim("one");
+    let (sim, registry, _directory) =
+        setup_animation(vec![spec("one", "NEEWER-RGB660 PRO")], &animation).await;
+    registry
+        .set_mode(Selector::All, hsi(200), false)
+        .await
+        .unwrap();
+    wait_until(|| sim.light(&id).timeline().len() == 1).await;
+    advance(Duration::from_millis(50)).await;
+    registry
+        .play(
+            animation.id.clone(),
+            PlaybackOptions::default(),
+            TargetBinding::default(),
+        )
+        .await
+        .unwrap();
+    wait_until(|| sim.light(&id).timeline().len() == 2).await;
+    advance(Duration::from_millis(250)).await;
+    wait_until(|| sim.light(&id).timeline().len() >= 3).await;
+    let stopped_at = tokio::time::Instant::now();
+    assert!(registry.stop_playback().await.unwrap());
+    advance(Duration::from_millis(200)).await;
+    wait_until(|| {
+        matches!(
+            sim.light(&id).last(),
+            Some((_, Decoded::Hsi { hue: 200, .. }))
+        )
+    })
+    .await;
+    let writes_after_revert = sim.light(&id).timeline().len();
+    assert!(
+        sim.light(&id)
+            .timeline()
+            .iter()
+            .all(|(at, _)| *at <= stopped_at + Duration::from_millis(200))
+    );
+    advance(Duration::from_millis(1_800)).await;
+    assert_eq!(sim.light(&id).timeline().len(), writes_after_revert);
+    assert!(!registry.stop_playback().await.unwrap());
+    registry.shutdown().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn manual_mode_preempts_playback_once_and_wins() {
+    let animation = test_animation(
+        vec![
+            Keyframe {
+                hold_ms: 50,
+                fade_ms: 0,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(0))]),
+            },
+            Keyframe {
+                hold_ms: 50,
+                fade_ms: 2_000,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(100))]),
+            },
+        ],
+        0,
+    );
+    let id = LightId::sim("one");
+    let (sim, registry, _directory) =
+        setup_animation(vec![spec("one", "NEEWER-RGB660 PRO")], &animation).await;
+    registry
+        .set_mode(Selector::All, hsi(200), false)
+        .await
+        .unwrap();
+    wait_until(|| sim.light(&id).timeline().len() == 1).await;
+    advance(Duration::from_millis(50)).await;
+    let mut events = registry.events();
+    registry
+        .play(
+            animation.id.clone(),
+            PlaybackOptions::default(),
+            TargetBinding::default(),
+        )
+        .await
+        .unwrap();
+    wait_until(|| sim.light(&id).timeline().len() == 2).await;
+    registry
+        .set_mode(Selector::All, hsi(300), false)
+        .await
+        .unwrap();
+    advance(Duration::from_secs(1)).await;
+    wait_until(|| {
+        matches!(
+            sim.light(&id).last(),
+            Some((_, Decoded::Hsi { hue: 300, .. }))
+        )
+    })
+    .await;
+    assert!(registry.world().borrow().playback.is_none());
+    let stopped = std::iter::from_fn(|| events.try_recv().ok())
+        .filter(|event| matches!(event.event, Event::Playback { playback: None }))
+        .count();
+    assert_eq!(stopped, 1);
+    registry.shutdown().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn slot_bindings_are_specific_and_fallback_wraps_round_robin() {
+    let slot = |number| AnimTarget::Slot(NonZeroU8::new(number).unwrap());
+    let animation = test_animation(
+        vec![Keyframe {
+            hold_ms: 50,
+            fade_ms: 0,
+            lights: BTreeMap::from([(slot(1), hsi(10)), (slot(2), hsi(20)), (slot(5), hsi(50))]),
+        }],
+        5,
+    );
+    let (sim, registry, _directory) = setup_animation(
+        vec![
+            spec("one", "NEEWER-RGB660 PRO"),
+            spec("two", "NEEWER-RGB660 PRO"),
+            spec("three", "NEEWER-RGB660 PRO"),
+        ],
+        &animation,
+    )
+    .await;
+    registry
+        .play(
+            animation.id.clone(),
+            PlaybackOptions {
+                revert_on_finish: false,
+                ..PlaybackOptions::default()
+            },
+            TargetBinding {
+                all: Selector::All,
+                slots: vec![LightId::sim("two"), LightId::sim("three")],
+            },
+        )
+        .await
+        .unwrap();
+    advance(Duration::from_millis(100)).await;
+    wait_until(|| registry.world().borrow().playback.is_none()).await;
+    assert!(sim.light(&LightId::sim("one")).timeline().is_empty());
+    assert!(matches!(
+        sim.light(&LightId::sim("two")).last(),
+        Some((_, Decoded::Hsi { hue: 50, .. }))
+    ));
+    assert!(matches!(
+        sim.light(&LightId::sim("three")).last(),
+        Some((_, Decoded::Hsi { hue: 20, .. }))
+    ));
     registry.shutdown().await;
 }

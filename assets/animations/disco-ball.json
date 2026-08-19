@@ -1,0 +1,81 @@
+{
+  "id": "disco-ball",
+  "name": "Disco Ball",
+  "description": "Fast multi-color party rotations",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 150,
+      "fade_ms": 100,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 150,
+      "fade_ms": 100,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 60,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 150,
+      "fade_ms": 100,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 120,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 150,
+      "fade_ms": 100,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 150,
+      "fade_ms": 100,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 240,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 150,
+      "fade_ms": 100,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 300,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    }
+  ]
+}

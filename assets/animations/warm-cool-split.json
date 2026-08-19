@@ -1,0 +1,61 @@
+{
+  "id": "warm-cool-split",
+  "name": "Warm Cool Split",
+  "description": "Two warm lights vs two cool lights alternating",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 80
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 80
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 80
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 80
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 80
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 80
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 80
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "id": "warm-studio",
+  "name": "Warm Studio",
+  "description": "Steady warm white with gentle variation for video",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 4200,
+          "bri": 90
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 4500,
+          "bri": 85
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 92
+        }
+      }
+    }
+  ]
+}

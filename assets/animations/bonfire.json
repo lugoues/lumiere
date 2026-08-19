@@ -1,0 +1,66 @@
+{
+  "id": "bonfire",
+  "name": "Bonfire",
+  "description": "Mixed warm CCT base with HSI orange flare-ups",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 40
+        }
+      }
+    },
+    {
+      "hold_ms": 500,
+      "fade_ms": 300,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 100,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 1500,
+      "fade_ms": 1500,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3300,
+          "bri": 35
+        }
+      }
+    },
+    {
+      "hold_ms": 300,
+      "fade_ms": 200,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 15,
+          "sat": 90,
+          "bri": 60
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 30
+        }
+      }
+    }
+  ]
+}

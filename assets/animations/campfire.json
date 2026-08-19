@@ -1,0 +1,189 @@
+{
+  "id": "campfire",
+  "name": "Campfire",
+  "description": "Multi-light flickering campfire with staggered warm tones",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 0,
+      "fade_ms": 0,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 15,
+          "sat": 100,
+          "bri": 85
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 100,
+          "bri": 60
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 8,
+          "sat": 100,
+          "bri": 95
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 95,
+          "bri": 50
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 250,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 100,
+          "bri": 55
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 10,
+          "sat": 100,
+          "bri": 90
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 95,
+          "bri": 45
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 5,
+          "sat": 100,
+          "bri": 85
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 180,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 8,
+          "sat": 100,
+          "bri": 100
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 20,
+          "sat": 100,
+          "bri": 45
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 15,
+          "sat": 100,
+          "bri": 80
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 35,
+          "sat": 90,
+          "bri": 65
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 300,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 20,
+          "sat": 100,
+          "bri": 65
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 5,
+          "sat": 100,
+          "bri": 75
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 100,
+          "bri": 55
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 12,
+          "sat": 100,
+          "bri": 95
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 200,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 95,
+          "bri": 45
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 15,
+          "sat": 100,
+          "bri": 100
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 5,
+          "sat": 100,
+          "bri": 70
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 22,
+          "sat": 100,
+          "bri": 55
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 280,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 12,
+          "sat": 100,
+          "bri": 90
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 95,
+          "bri": 55
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 18,
+          "sat": 100,
+          "bri": 100
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 8,
+          "sat": 100,
+          "bri": 40
+        }
+      }
+    }
+  ]
+}

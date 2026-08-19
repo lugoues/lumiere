@@ -1,0 +1,65 @@
+{
+  "id": "film-noir",
+  "name": "Film Noir",
+  "description": "High contrast warm key with cool blue shadow",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 80
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 20
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 40,
+          "bri": 15
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 40,
+          "bri": 10
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 4200,
+          "bri": 75
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4200,
+          "bri": 25
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 225,
+          "sat": 35,
+          "bri": 12
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 225,
+          "sat": 35,
+          "bri": 8
+        }
+      }
+    }
+  ]
+}

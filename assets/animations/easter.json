@@ -1,0 +1,57 @@
+{
+  "id": "easter",
+  "name": "Easter",
+  "description": "Soft pastel spring colors — lavender, pink, mint, yellow",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 2500,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 270,
+          "sat": 40,
+          "bri": 60
+        }
+      }
+    },
+    {
+      "hold_ms": 2500,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 330,
+          "sat": 35,
+          "bri": 65
+        }
+      }
+    },
+    {
+      "hold_ms": 2500,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 150,
+          "sat": 40,
+          "bri": 55
+        }
+      }
+    },
+    {
+      "hold_ms": 2500,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 55,
+          "sat": 45,
+          "bri": 65
+        }
+      }
+    }
+  ]
+}

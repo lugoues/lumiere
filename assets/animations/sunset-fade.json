@@ -1,0 +1,105 @@
+{
+  "id": "sunset-fade",
+  "name": "Sunset Fade",
+  "description": "Slow warm-to-cool transition like a sunset into twilight",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 0,
+      "fade_ms": 0,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 100,
+          "bri": 90
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 10,
+          "sat": 100,
+          "bri": 85
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 350,
+          "sat": 90,
+          "bri": 75
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 320,
+          "sat": 80,
+          "bri": 65
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 280,
+          "sat": 70,
+          "bri": 50
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 260,
+          "sat": 60,
+          "bri": 40
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        }
+      }
+    }
+  ]
+}

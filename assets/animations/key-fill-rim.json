@@ -1,0 +1,65 @@
+{
+  "id": "key-fill-rim",
+  "name": "Key Fill Rim",
+  "description": "Classic 3-point lighting breathing with mixed CCT and HSI",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 4000,
+      "fade_ms": 4000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 5000,
+          "bri": 90
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4200,
+          "bri": 50
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 30,
+          "bri": 35
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 30,
+          "bri": 25
+        }
+      }
+    },
+    {
+      "hold_ms": 4000,
+      "fade_ms": 4000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 4800,
+          "bri": 85
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4400,
+          "bri": 55
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 225,
+          "sat": 35,
+          "bri": 40
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 225,
+          "sat": 35,
+          "bri": 30
+        }
+      }
+    }
+  ]
+}

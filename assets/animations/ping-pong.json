@@ -1,0 +1,189 @@
+{
+  "id": "ping-pong",
+  "name": "Ping Pong",
+  "description": "Light bounces back and forth across 4 positions",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 200,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 100
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 100,
+          "bri": 10
+        }
+      }
+    }
+  ]
+}

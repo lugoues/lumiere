@@ -1,0 +1,31 @@
+{
+  "id": "interview",
+  "name": "Interview",
+  "description": "Clean daylight white with very subtle breathing",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 8000,
+      "fade_ms": 6000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 5500,
+          "bri": 95
+        }
+      }
+    },
+    {
+      "hold_ms": 8000,
+      "fade_ms": 6000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 90
+        }
+      }
+    }
+  ]
+}
