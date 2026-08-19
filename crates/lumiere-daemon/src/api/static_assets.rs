@@ -27,6 +27,22 @@ mod implementation {
     use super::*;
 
     pub fn router() -> Router {
+        // Dev mode serves mutable files under stable names. Without an explicit
+        // Cache-Control, browsers cache them heuristically and skip
+        // revalidation, which shows a stale UI after a rebuild. no-cache forces
+        // an If-Modified-Since check; unchanged files still answer 304.
+        async fn force_revalidation(
+            request: axum::extract::Request<Body>,
+            next: axum::middleware::Next,
+        ) -> Response {
+            let mut response = next.run(request).await;
+            response
+                .headers_mut()
+                .entry(header::CACHE_CONTROL)
+                .or_insert(axum::http::HeaderValue::from_static("no-cache"));
+            response
+        }
+
         let root = web_root();
         match std::fs::metadata(root.join("index.html")).and_then(|meta| meta.modified()) {
             Ok(modified) => {
@@ -45,7 +61,9 @@ mod implementation {
         }
         // SPA deep links must serve index.html with a 200; not_found_service
         // would force the status to 404, while fallback preserves the status.
-        Router::new().fallback_service(ServeDir::new(root).fallback(any(spa_fallback)))
+        Router::new()
+            .fallback_service(ServeDir::new(root).fallback(any(spa_fallback)))
+            .layer(axum::middleware::from_fn(force_revalidation))
     }
 
     async fn spa_fallback(request: Request<Body>) -> Response {
