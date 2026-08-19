@@ -67,14 +67,18 @@ fn LiveApp() -> Element {
     let _connection = use_future(move || ws::run(state));
 
     rsx! {
-        Header {}
-        main { class: "container",
-            section { class: "card full-width lights-card",
-                div { class: "card-header", "Lights" }
-                LightTable {}
+        div { class: "app-shell",
+            Header {}
+            main { class: "container",
+                section { class: "card lights-card",
+                    div { class: "card-header", "Lights" }
+                    LightTable {}
+                }
+                div { class: "bottom-row",
+                    PresetsPanel {}
+                    AnimationsPanel {}
+                }
             }
-            PresetsPanel {}
-            AnimationsPanel {}
         }
     }
 }

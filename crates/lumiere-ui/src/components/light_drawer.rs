@@ -2,7 +2,10 @@ use dioxus::prelude::*;
 use lumiere_proto::{Hue, Kelvin, LightSnapshot, Mode, Percent};
 
 use super::{command::send_mode, sliders::GradientSlider};
-use crate::state::AppState;
+use crate::{
+    api::{ApiClient, ApiError},
+    state::AppState,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Tab {
@@ -70,6 +73,8 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
     let mut hsi_hue = use_signal(|| None::<i32>);
     let mut hsi_sat = use_signal(|| None::<i32>);
     let mut hsi_bri = use_signal(|| None::<i32>);
+    let mut editing_label = use_signal(|| false);
+    let mut edit_label = use_signal(String::new);
 
     let eff_temp = cct_temp()
         .or(known.cct_temp)
@@ -97,9 +102,56 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
     let hsi_bri_id = light.id.clone();
     let on_id = light.id.clone();
     let off_id = light.id.clone();
+    let rename_id = light.id.clone();
 
     rsx! {
         div { class: "light-drawer",
+            div { class: "light-name-row",
+                if editing_label() {
+                    form {
+                        class: "light-name-edit",
+                        onsubmit: move |event| {
+                            event.prevent_default();
+                            let label = edit_label.read().trim().to_owned();
+                            if label.is_empty() {
+                                state.report_error("Light name cannot be empty.");
+                                return;
+                            }
+                            let id = rename_id.clone();
+                            spawn(async move {
+                                match ApiClient::new(state.token).set_label(&id, label).await {
+                                    Ok(_) => editing_label.set(false),
+                                    Err(error) => handle_error(state, error),
+                                }
+                            });
+                        },
+                        input {
+                            aria_label: "Rename light",
+                            value: "{edit_label}",
+                            oninput: move |event| edit_label.set(event.value()),
+                        }
+                        button { class: "btn compact", r#type: "submit", "Save" }
+                        button {
+                            class: "btn compact",
+                            r#type: "button",
+                            onclick: move |_| editing_label.set(false),
+                            "Cancel"
+                        }
+                    }
+                } else {
+                    strong { "{light.label}" }
+                    button {
+                        class: "light-name-edit-button",
+                        aria_label: "Rename {light.label}",
+                        title: "Rename",
+                        onclick: move |_| {
+                            edit_label.set(light.label.clone());
+                            editing_label.set(true);
+                        },
+                        "✎"
+                    }
+                }
+            }
             div { class: "mode-tabs drawer-tabs", role: "tablist",
                 button {
                     class: if tab() == Tab::Cct { "mode-tab active" } else { "mode-tab" },
@@ -202,6 +254,13 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                 }
             }
         }
+    }
+}
+
+fn handle_error(state: AppState, error: ApiError) {
+    match error {
+        ApiError::Auth(_) => state.logout(),
+        error => state.report_error(error.to_string()),
     }
 }
 
