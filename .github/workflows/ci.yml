@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --workspace
+      - name: Proto stays wasm-compatible
+        run: cargo check -p lumiere-proto --target wasm32-unknown-unknown
+      - name: Proto stays dependency-light
+        run: |
+          # lumiere-proto must never grow OS-facing deps; it is shared with the WASM UI.
+          if cargo tree -p lumiere-proto -e normal | grep -E '\b(tokio|btleplug|mio|reqwest|axum)\b'; then
+            echo "forbidden dependency in lumiere-proto" >&2; exit 1
+          fi
