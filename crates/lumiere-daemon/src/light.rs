@@ -44,9 +44,11 @@ pub(crate) struct LightActor {
     /// Used to drop duplicate desired-watch echoes; cleared on every (re)connect
     /// so a fresh link always gets a full rewrite.
     last_written: Option<Mode>,
-    /// True after this actor wrote Mode::Off. Mode writes do not wake a Neewer
-    /// light, so color and temperature commands prepend a power-on while set.
-    power_known_off: bool,
+    /// True only after this link has carried a power-on (alone or prepended).
+    /// Mode writes do not wake a Neewer light, and the light may be off for
+    /// reasons this daemon never saw (a previous session, the physical switch),
+    /// so the first lit write on every link prepends a power-on.
+    power_known_on: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -95,7 +97,7 @@ impl LightActor {
             ops_open: true,
             retry: None,
             last_written: None,
-            power_known_off: false,
+            power_known_on: false,
         }
     }
 
@@ -197,6 +199,7 @@ impl LightActor {
             Ok(link) => {
                 self.link = Some(link);
                 self.last_written = None;
+                self.power_known_on = false;
                 self.report_connection(ConnState::Connected, None).await;
                 Ok(())
             }
@@ -235,6 +238,7 @@ impl LightActor {
             Ok(link) => {
                 self.link = Some(link);
                 self.last_written = None;
+                self.power_known_on = false;
                 self.report_connection(ConnState::Connected, None).await;
                 self.apply_current_desired().await;
             }
@@ -283,7 +287,7 @@ impl LightActor {
         };
         let (applied, clamped) = clamp_to_device(requested_for_device, &self.caps);
         let adapted = converted || clamped;
-        if self.power_known_off && !matches!(applied, Mode::Off) {
+        if !self.power_known_on && !matches!(applied, Mode::Off) {
             for packet in encode(Mode::On, &self.caps) {
                 if let Err(error) = self.write_packet(packet.as_bytes()).await {
                     self.last_written = None;
@@ -293,7 +297,7 @@ impl LightActor {
                     };
                 }
             }
-            self.power_known_off = false;
+            self.power_known_on = true;
         }
         for packet in encode(applied, &self.caps) {
             if let Err(error) = self.write_packet(packet.as_bytes()).await {
@@ -306,7 +310,7 @@ impl LightActor {
         }
 
         self.last_written = Some(requested);
-        self.power_known_off = matches!(applied, Mode::Off);
+        self.power_known_on = !matches!(applied, Mode::Off);
         if adapted {
             PerLightResult::Adapted {
                 id: self.id.clone(),
