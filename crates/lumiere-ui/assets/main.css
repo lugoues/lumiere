@@ -231,6 +231,33 @@ select:focus-visible {
     width: 100%;
     border-collapse: collapse;
     font-size: 12px;
+    /* Fixed layout: cell content changes (20% vs 100%) must not reflow columns. */
+    table-layout: fixed;
+}
+
+.light-table th.select-column {
+    width: 34px;
+}
+.light-table th:nth-child(2) {
+    width: 30%;
+}
+.light-table th:nth-child(3) {
+    width: 24%;
+}
+.light-table th:nth-child(4) {
+    width: 14%;
+}
+.light-table th:nth-child(5) {
+    width: 12%;
+}
+.light-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.light-table tr.drawer-row td {
+    overflow: visible;
+    white-space: normal;
 }
 
 .light-table th {
@@ -797,6 +824,9 @@ input[type="checkbox"] {
     font-family: "Consolas", "Courier New", monospace;
     font-size: 13px;
     font-weight: 650;
+    /* Wide enough for the longest readout (10000 K) so values never jitter. */
+    min-width: 7ch;
+    text-align: right;
 }
 
 .slider-row {
