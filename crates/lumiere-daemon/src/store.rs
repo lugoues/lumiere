@@ -21,20 +21,34 @@ const STORE_DEBOUNCE: Duration = Duration::from_millis(500);
 /// The complete persistent state loaded for the registry.
 #[derive(Clone, Debug)]
 pub struct StoreData {
-    pub labels: HashMap<LightId, String>,
+    pub lights: HashMap<LightId, SavedLight>,
     pub presets: Vec<Preset>,
+}
+
+/// Everything remembered about one light across daemon restarts.
+#[derive(Clone, Debug, Default)]
+pub struct SavedLight {
+    pub label: Option<String>,
+    /// The last mode this daemon confirmed on the light. Neewer lights keep
+    /// their settings across disconnects, so this doubles as the best guess
+    /// of current state when the light reappears.
+    pub mode: Option<Mode>,
 }
 
 /// A persisted registry update.
 #[derive(Clone, Debug)]
 pub enum StoreUpdate {
     Label { id: LightId, label: String },
+    Mode { id: LightId, mode: Mode },
     Presets(Vec<Preset>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct StoredLight {
-    label: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    mode: Option<Mode>,
 }
 
 const LIGHTS_FILE: &str = "lights.toml";
@@ -58,12 +72,20 @@ pub fn default_dir() -> Result<PathBuf, StoreError> {
 
 /// Loads saved labels and ordered presets from an injectable data directory.
 pub fn load(dir: &Path) -> Result<StoreData, StoreError> {
-    let labels = match fs::read_to_string(dir.join(LIGHTS_FILE)) {
+    let lights = match fs::read_to_string(dir.join(LIGHTS_FILE)) {
         Ok(encoded) => {
             let stored: BTreeMap<String, StoredLight> = toml::from_str(&encoded)?;
             stored
                 .into_iter()
-                .map(|(id, light)| Ok((LightId::parse(&id)?, light.label)))
+                .map(|(id, light)| {
+                    Ok((
+                        LightId::parse(&id)?,
+                        SavedLight {
+                            label: light.label,
+                            mode: light.mode,
+                        },
+                    ))
+                })
                 .collect::<Result<_, StoreError>>()?
         }
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => HashMap::new(),
@@ -74,7 +96,7 @@ pub fn load(dir: &Path) -> Result<StoreData, StoreError> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => factory_presets(),
         Err(error) => return Err(error.into()),
     };
-    Ok(StoreData { labels, presets })
+    Ok(StoreData { lights, presets })
 }
 
 /// Starts the debounced persistence task for an injectable data directory.
@@ -131,7 +153,11 @@ async fn run(
 fn apply_update(data: &mut StoreData, update: StoreUpdate) -> (bool, bool) {
     match update {
         StoreUpdate::Label { id, label } => {
-            data.labels.insert(id, label);
+            data.lights.entry(id).or_default().label = Some(label);
+            (true, false)
+        }
+        StoreUpdate::Mode { id, mode } => {
+            data.lights.entry(id).or_default().mode = Some(mode);
             (true, false)
         }
         StoreUpdate::Presets(presets) => {
@@ -149,7 +175,7 @@ fn write_dirty(
     presets_dirty: bool,
 ) -> Result<(), StoreError> {
     if labels_dirty {
-        write_labels(path, &data.labels)?;
+        write_lights(path, &data.lights)?;
     }
     if presets_dirty {
         write_presets(presets_path, &data.presets)?;
@@ -157,14 +183,15 @@ fn write_dirty(
     Ok(())
 }
 
-fn write_labels(path: &Path, labels: &HashMap<LightId, String>) -> Result<(), StoreError> {
-    let stored: BTreeMap<_, _> = labels
+fn write_lights(path: &Path, lights: &HashMap<LightId, SavedLight>) -> Result<(), StoreError> {
+    let stored: BTreeMap<_, _> = lights
         .iter()
-        .map(|(id, label)| {
+        .map(|(id, saved)| {
             (
                 id.to_string(),
                 StoredLight {
-                    label: label.clone(),
+                    label: saved.label.clone(),
+                    mode: saved.mode,
                 },
             )
         })
