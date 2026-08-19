@@ -396,3 +396,49 @@ async fn reconnect_replays_the_acked_mode_not_a_stale_one() {
     );
     registry.shutdown().await;
 }
+
+/// A light that is unreachable at discovery time must recover on its own via
+/// the same backoff used for dropped links, without a manual reconnect.
+#[tokio::test(start_paused = true)]
+async fn initial_connect_failure_retries_until_connected() {
+    let mut lights = four_lights();
+    lights[0].connect_failures = 2;
+    let sim = SimTransport::new(SimConfig {
+        lights,
+        write_latency: Duration::ZERO,
+        fail_every_nth_write: None,
+    });
+    let registry = RegistryHandle::spawn(sim.clone());
+    registry.discover(Duration::from_secs(60)).await.unwrap();
+    let id = LightId::sim("rgb660");
+
+    let conn_of = |registry: &RegistryHandle| {
+        registry
+            .world()
+            .borrow()
+            .lights
+            .iter()
+            .find(|light| light.id == id)
+            .map(|light| light.conn.clone())
+    };
+
+    wait_until(|| {
+        matches!(
+            conn_of(&registry),
+            Some(ConnState::Reconnecting { attempt: 1 })
+        )
+    })
+    .await;
+    advance(Duration::from_millis(250)).await;
+    wait_until(|| {
+        matches!(
+            conn_of(&registry),
+            Some(ConnState::Reconnecting { attempt: 2 })
+        )
+    })
+    .await;
+    advance(Duration::from_millis(500)).await;
+    wait_until(|| matches!(conn_of(&registry), Some(ConnState::Connected))).await;
+    assert!(sim.light(&id).is_connected());
+    registry.shutdown().await;
+}

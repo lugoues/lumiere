@@ -197,8 +197,15 @@ impl LightActor {
                 Ok(())
             }
             Err(error) => {
+                // A transient failure here (adapter settling, light mid-boot) must
+                // not strand the light: arm the same backoff the closed-link path uses.
                 let error = error.to_string();
-                self.report_connection(ConnState::Lost, Some(error.clone()))
+                let attempt = 1;
+                self.retry = Some(Retry {
+                    attempt,
+                    at: Instant::now() + retry_delay(attempt),
+                });
+                self.report_connection(ConnState::Reconnecting { attempt }, Some(error.clone()))
                     .await;
                 Err(error)
             }
