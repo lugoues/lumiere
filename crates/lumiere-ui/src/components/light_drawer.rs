@@ -208,7 +208,6 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                             send_mode(state, cct_bri_id.clone(), cct_mode(eff_temp, value));
                         },
                     }
-                    p { class: "range-note", "Range {cct_min} K to {cct_max} K for this light." }
                 }
             } else {
                 div { class: "mode-pane drawer-mode-pane",
