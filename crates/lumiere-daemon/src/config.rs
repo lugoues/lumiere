@@ -21,8 +21,13 @@ pub struct Config {
 
 impl Config {
     /// Loads or creates the Lumière configuration file.
+    /// The file load_or_create reads and writes.
+    pub fn path() -> Result<PathBuf, ConfigError> {
+        Ok(config_dir()?.join("config.toml"))
+    }
+
     pub fn load_or_create() -> Result<Self, ConfigError> {
-        let path = config_dir()?.join("config.toml");
+        let path = Self::path()?;
         if path.exists() {
             return Ok(toml::from_str(&fs::read_to_string(path)?)?);
         }
