@@ -389,9 +389,6 @@ select:focus-visible {
     gap: 0 18px;
 }
 
-.drawer-mode-pane .range-note {
-    grid-column: 1 / -1;
-}
 
 .select-column {
     width: 42px;
@@ -877,11 +874,6 @@ input[type="checkbox"] {
     box-shadow: 0 1px 4px rgba(0, 0, 0, .55);
 }
 
-.range-note {
-    margin-top: -7px;
-    color: var(--muted);
-    font-size: 10px;
-}
 
 .power-row {
     display: flex;
