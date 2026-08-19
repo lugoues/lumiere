@@ -16,15 +16,14 @@
 			"target": "/mnt/mise-data",
 			"type": "volume"
 		},
-		"source=/etc/localtime,target=/usr/share/zoneinfo/hostlocaltime,type=bind,readonly"
+		"source=/etc/localtime,target=/usr/share/zoneinfo/hostlocaltime,type=bind,readonly",
 		// Real-BLE work inside the container (Linux hosts with BlueZ only; breaks
 		// container creation elsewhere). Uncomment, then rebuild:
-		// ,"source=/run/dbus/system_bus_socket,target=/run/dbus/system_bus_socket,type=bind"
+		"source=/run/dbus/system_bus_socket,target=/run/dbus/system_bus_socket,type=bind"
 	],
-
-  "runArgs": [
-    "${localEnv:DEVCONTAINER_USERNS_ARG}"
-],
+	"runArgs": [
+		"${localEnv:DEVCONTAINER_USERNS_ARG}"
+	],
 	"name": "Lumière",
 	"customizations": {
 		"vscode": {

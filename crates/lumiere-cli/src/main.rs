@@ -285,12 +285,42 @@ async fn bench(transport: &BleTransport, fragment: &str, writes: usize) -> Resul
         .connect(&light.id, Duration::from_secs(10))
         .await
         .map_err(|error| error.to_string())?;
+    // Without-response writes return as soon as the platform queues them, so
+    // per-call latency measures the local stack. Sustained throughput needs a
+    // flush barrier: one with-response write cannot complete until the radio
+    // has drained everything queued before it.
+    let sustained_started = Instant::now();
     let without = benchmark(link.as_ref(), &caps, writes, WriteKind::WithoutResponse).await?;
+    barrier_write(link.as_ref(), &caps).await?;
+    let sustained = sustained_started.elapsed();
     let with = benchmark(link.as_ref(), &caps, writes, WriteKind::WithResponse).await?;
-    print_stats("WithoutResponse", &without);
+    print_stats("WithoutResponse (local queue latency)", &without);
+    println!(
+        "WithoutResponse sustained: {} writes drained in {:.2?} = {:.1} writes/sec on air",
+        without.len(),
+        sustained,
+        without.len() as f64 / sustained.as_secs_f64(),
+    );
     print_stats("WithResponse", &with);
-    println!("Hint: the WithoutResponse throughput cap is what bounds animation fps.");
+    println!("Hint: the sustained on-air rate is what bounds animation fps per light.");
     link.disconnect().await.map_err(|error| error.to_string())?;
+    Ok(())
+}
+
+/// Blocks until the radio has drained every write queued before it.
+async fn barrier_write(link: &dyn Link, caps: &Capabilities) -> Result<(), String> {
+    let (mode, _) = clamp_to_device(
+        Mode::Cct {
+            temp: Kelvin::new(5600).expect("valid"),
+            bri: Percent::new(50).expect("valid"),
+        },
+        caps,
+    );
+    for packet in encode(mode, caps).packets() {
+        link.write(packet.as_bytes(), WriteKind::WithResponse)
+            .await
+            .map_err(|error| error.to_string())?;
+    }
     Ok(())
 }
 
