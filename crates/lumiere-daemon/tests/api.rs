@@ -392,3 +392,33 @@ where
         }
     }
 }
+
+/// A client reconnecting after a daemon restart carries a last_seq from the
+/// old process; the server must respond with a full snapshot, not an empty replay.
+#[tokio::test]
+async fn stale_future_last_seq_gets_a_snapshot() {
+    let Some(server) = spawn_test_server(None).await else {
+        return;
+    };
+    let client = reqwest::Client::new();
+    let ticket = new_ticket(&client, &server).await;
+    let (mut socket, _) = connect_async(server.base.replace("http://", "ws://") + "/api/v1/events")
+        .await
+        .unwrap();
+    socket
+        .send(json_message(&ClientMsg::Hello {
+            protocol_version: WS_PROTOCOL_VERSION,
+            ticket,
+            last_seq: Some(1_000_000),
+        }))
+        .await
+        .unwrap();
+    match next_server_message(&mut socket).await {
+        ServerMsg::Welcome { snapshot, .. } => {
+            assert!(snapshot.is_some(), "future last_seq must force a snapshot")
+        }
+        message => panic!("unexpected message: {message:?}"),
+    }
+    socket.close(None).await.unwrap();
+    server.stop().await;
+}
