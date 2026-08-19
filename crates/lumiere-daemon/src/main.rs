@@ -1,9 +1,17 @@
-use std::{process::ExitCode, time::Duration};
+use std::{error::Error, process::ExitCode, time::Duration};
 
-use lumiere_daemon::RegistryHandle;
+use lumiere_daemon::{
+    RegistryConfig, RegistryHandle,
+    api::{ApiState, router},
+    config::Config,
+    store,
+};
 use lumiere_proto::LightId;
-use lumiere_transport::sim::{SimConfig, SimLightSpec, SimTransport};
-use tracing::info;
+use lumiere_transport::{
+    Transport,
+    ble::BleTransport,
+    sim::{SimConfig, SimLightSpec, SimTransport},
+};
 use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
@@ -11,11 +19,62 @@ async fn main() -> ExitCode {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     tracing_subscriber::fmt().with_env_filter(filter).init();
 
-    if !std::env::args().any(|argument| argument == "--sim") {
-        eprintln!("real transport not yet implemented");
-        return ExitCode::FAILURE;
+    match run().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("{error}");
+            ExitCode::FAILURE
+        }
     }
+}
 
+async fn run() -> Result<(), Box<dyn Error>> {
+    let config = Config::load_or_create()?;
+    let sim = std::env::args().any(|argument| argument == "--sim");
+    if sim {
+        serve(sim_transport(), config).await
+    } else {
+        serve(BleTransport::new().await?, config).await
+    }
+}
+
+async fn serve<T>(transport: T, config: Config) -> Result<(), Box<dyn Error>>
+where
+    T: Transport,
+{
+    let store_path = store::default_path()?;
+    let labels = store::load(&store_path)?;
+    let (store_updates, store_task) = store::spawn(store_path, labels.clone());
+    let registry = RegistryHandle::spawn_with_config(
+        transport,
+        RegistryConfig {
+            labels,
+            store_updates: Some(store_updates),
+            ..RegistryConfig::default()
+        },
+    );
+    registry.discover(Duration::from_secs(10)).await?;
+
+    let listener = tokio::net::TcpListener::bind(config.bind).await?;
+    let bound = listener.local_addr()?;
+    println!("Lumière token: {}", config.token);
+    println!("Bootstrap URL: http://{bound}/#t={}", config.token);
+
+    let app = router(ApiState::new(registry.clone(), &config));
+    let result = axum::serve(listener, app)
+        .with_graceful_shutdown(async {
+            let _ = tokio::signal::ctrl_c().await;
+        })
+        .await;
+
+    registry.shutdown().await;
+    drop(registry);
+    store_task.await??;
+    result?;
+    Ok(())
+}
+
+fn sim_transport() -> SimTransport {
     let names = [
         "NEEWER-RGB660 PRO",
         "NEEWER-SNL660",
@@ -32,31 +91,9 @@ async fn main() -> ExitCode {
             connect_failures: 0,
         })
         .collect();
-    let transport = SimTransport::new(SimConfig {
+    SimTransport::new(SimConfig {
         lights,
         write_latency: Duration::ZERO,
         fail_every_nth_write: None,
-    });
-    let registry = RegistryHandle::spawn(transport);
-    let mut events = registry.events();
-    registry
-        .discover(Duration::from_secs(10))
-        .await
-        .expect("registry must accept discovery");
-
-    loop {
-        tokio::select! {
-            result = events.recv() => match result {
-                Ok(event) => info!(?event, "registry event"),
-                Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
-                    info!(skipped, "event logger lagged");
-                }
-                Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
-            },
-            _ = tokio::signal::ctrl_c() => break,
-        }
-    }
-
-    registry.shutdown().await;
-    ExitCode::SUCCESS
+    })
 }

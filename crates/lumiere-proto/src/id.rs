@@ -17,6 +17,24 @@ pub struct IdError {
 pub struct LightId(SmolStr);
 
 impl LightId {
+    /// Parses a namespaced light identifier.
+    pub fn parse(value: &str) -> Result<Self, IdError> {
+        if let Some(value) = value.strip_prefix("mac:") {
+            Self::mac(value)
+        } else if let Some(value) = value.strip_prefix("cb:") {
+            Self::corebluetooth(value)
+        } else if let Some(value) = value.strip_prefix("sim:")
+            && !value.is_empty()
+        {
+            Ok(Self::sim(value))
+        } else {
+            Err(IdError {
+                kind: "namespaced",
+                value: value.into(),
+            })
+        }
+    }
+
     /// Parses and normalizes a six-octet Bluetooth MAC address.
     pub fn mac(value: &str) -> Result<Self, IdError> {
         let parts: Vec<_> = value.split(':').collect();
@@ -107,5 +125,12 @@ mod tests {
         assert_eq!(cb.as_str(), "cb:abcdef01-2345-6789-abcd-ef0123456789");
         assert!(LightId::mac("aa:bb").is_err());
         assert!(LightId::corebluetooth("nope").is_err());
+        assert_eq!(
+            LightId::parse("mac:aa:0b:CC:dd:ee:fF").unwrap(),
+            LightId::mac("aa:0b:CC:dd:ee:fF").unwrap()
+        );
+        assert_eq!(LightId::parse("sim:desk").unwrap().as_str(), "sim:desk");
+        assert!(LightId::parse("sim:").is_err());
+        assert!(LightId::parse("desk").is_err());
     }
 }

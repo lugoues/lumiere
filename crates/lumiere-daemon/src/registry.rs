@@ -1,4 +1,8 @@
-use std::{collections::VecDeque, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+    time::Duration,
+};
 
 use futures::{StreamExt, future::join_all};
 use lumiere_core::caps::ModelTable;
@@ -10,7 +14,10 @@ use lumiere_transport::{Discovered, ScanFilter, Transport};
 use tokio::sync::{Semaphore, broadcast, mpsc, oneshot, watch};
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
 
-use crate::light::{LightActor, LightActorArgs, LightOp};
+use crate::{
+    light::{LightActor, LightActorArgs, LightOp},
+    store::StoreUpdate,
+};
 
 const EVENT_RING_CAPACITY: usize = 256;
 const REGISTRY_CHANNEL_CAPACITY: usize = 256;
@@ -23,6 +30,8 @@ const GLOBAL_WRITE_PERMITS: usize = 4;
 pub struct RegistryConfig {
     pub min_write_interval: Duration,
     pub connect_timeout: Duration,
+    pub labels: HashMap<LightId, String>,
+    pub store_updates: Option<mpsc::Sender<StoreUpdate>>,
 }
 
 impl Default for RegistryConfig {
@@ -30,6 +39,8 @@ impl Default for RegistryConfig {
         Self {
             min_write_interval: Duration::from_millis(50),
             connect_timeout: Duration::from_secs(10),
+            labels: HashMap::new(),
+            store_updates: None,
         }
     }
 }
@@ -42,6 +53,15 @@ pub enum RegistryCmd {
     Connect {
         id: LightId,
         reply: oneshot::Sender<Result<(), String>>,
+    },
+    Disconnect {
+        id: LightId,
+        reply: oneshot::Sender<Result<(), String>>,
+    },
+    SetLabel {
+        id: LightId,
+        label: String,
+        reply: oneshot::Sender<Result<LightSnapshot, String>>,
     },
     SetMode {
         selector: Selector,
@@ -155,6 +175,30 @@ impl RegistryHandle {
         result
             .await
             .map_err(|_| "light actor stopped before replying".to_owned())?
+    }
+
+    /// Requests a disconnection and returns the light actor's result.
+    pub async fn disconnect(&self, id: LightId) -> Result<(), String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::Disconnect { id, reply })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "light actor stopped before replying".to_owned())?
+    }
+
+    /// Changes a light label and queues it for persistence.
+    pub async fn set_label(&self, id: LightId, label: String) -> Result<LightSnapshot, String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::SetLabel { id, label, reply })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "registry stopped before replying".to_owned())?
     }
 
     /// Applies a mode to the selected lights.
@@ -298,6 +342,33 @@ impl Registry {
                     }
                 }
             }
+            RegistryCmd::Disconnect { id, reply } => {
+                match self.lights.iter().find(|light| light.snapshot.id == id) {
+                    Some(light) => {
+                        if let Err(error) = light.ops_tx.send(LightOp::Disconnect { reply }).await
+                            && let LightOp::Disconnect { reply } = error.0
+                        {
+                            let _ = reply.send(Err("light actor stopped".to_owned()));
+                        }
+                    }
+                    None => {
+                        let _ = reply.send(Err(format!("light {id} was not found")));
+                    }
+                }
+            }
+            RegistryCmd::SetLabel { id, label, reply } => {
+                let Some(index) = self.index_of(&id) else {
+                    let _ = reply.send(Err(format!("light {id} was not found")));
+                    return;
+                };
+                self.lights[index].snapshot.label.clone_from(&label);
+                self.config.labels.insert(id.clone(), label.clone());
+                self.emit(index);
+                if let Some(store_updates) = &self.config.store_updates {
+                    let _ = store_updates.send(StoreUpdate { id, label }).await;
+                }
+                let _ = reply.send(Ok(self.lights[index].snapshot.clone()));
+            }
             RegistryCmd::SetMode {
                 selector,
                 mode,
@@ -434,10 +505,16 @@ impl Registry {
 
         let model = discovered.name.unwrap_or_else(|| discovered.id.to_string());
         let caps = ModelTable::builtin().resolve(&model);
+        let label = self
+            .config
+            .labels
+            .get(&discovered.id)
+            .cloned()
+            .unwrap_or_else(|| model.clone());
         let snapshot = LightSnapshot {
             id: discovered.id.clone(),
             model: model.clone(),
-            label: model,
+            label,
             caps: caps.clone(),
             conn: ConnState::Discovered,
             rssi: discovered.rssi,

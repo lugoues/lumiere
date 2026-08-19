@@ -24,3 +24,9 @@ async-trait = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 proptest = "1"
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors", "limit", "timeout", "trace"] }
+directories = "6"
+rand = "0.9"
+subtle = "2"
+tempfile = "3"
