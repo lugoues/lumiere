@@ -1,0 +1,25 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/lugoues/lumiere"
+
+[workspace.dependencies]
+lumiere-proto = { path = "crates/lumiere-proto" }
+lumiere-core = { path = "crates/lumiere-core" }
+lumiere-transport = { path = "crates/lumiere-transport" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+smol_str = { version = "0.3", features = ["serde"] }
+thiserror = "2"
+toml = "0.9"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "macros", "signal"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+futures = "0.3"
+async-trait = "0.1"
+tracing = "0.1"
+proptest = "1"

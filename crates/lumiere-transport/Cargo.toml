@@ -1,0 +1,21 @@
+[package]
+name = "lumiere-transport"
+description = "Transport/Link traits, btleplug backend, and the light simulator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["btleplug"]
+btleplug = []
+
+[dependencies]
+lumiere-proto.workspace = true
+lumiere-core.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+futures.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

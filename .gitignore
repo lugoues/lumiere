@@ -1,0 +1,4 @@
+/target
+/dist/web/*
+!/dist/web/index.html
+/references/

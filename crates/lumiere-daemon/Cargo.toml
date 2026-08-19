@@ -1,0 +1,15 @@
+[package]
+name = "lumiere-daemon"
+description = "The Lumière daemon: actors, persistence, HTTP/WS API"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+lumiere-proto.workspace = true
+lumiere-core.workspace = true
+lumiere-transport.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
