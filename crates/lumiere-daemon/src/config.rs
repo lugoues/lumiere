@@ -35,7 +35,7 @@ impl Config {
         let mut token = [0_u8; 32];
         OsRng.try_fill_bytes(&mut token)?;
         let config = Self {
-            bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080),
+            bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9091),
             token: base64url(&token),
             cors_origins: Vec::new(),
         };
