@@ -151,6 +151,17 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         "✎"
                     }
                 }
+                div { class: "spacer" }
+                button {
+                    class: "btn success compact",
+                    onclick: move |_| send_mode(state, on_id.clone(), Mode::On),
+                    "On"
+                }
+                button {
+                    class: "btn danger compact",
+                    onclick: move |_| send_mode(state, off_id.clone(), Mode::Off),
+                    "Off"
+                }
             }
             div { class: "mode-tabs drawer-tabs", role: "tablist",
                 button {
@@ -168,17 +179,6 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         onclick: move |_| tab.set(Tab::Hsi),
                         "HSI"
                     }
-                }
-                div { class: "spacer" }
-                button {
-                    class: "btn success compact",
-                    onclick: move |_| send_mode(state, on_id.clone(), Mode::On),
-                    "On"
-                }
-                button {
-                    class: "btn danger compact",
-                    onclick: move |_| send_mode(state, off_id.clone(), Mode::Off),
-                    "Off"
                 }
             }
             if tab() == Tab::Cct || !rgb {
