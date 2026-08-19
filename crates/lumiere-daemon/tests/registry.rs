@@ -4,7 +4,7 @@ use lumiere_core::wire::Decoded;
 use lumiere_daemon::{RegistryConfig, RegistryHandle};
 use lumiere_proto::{
     AnimTarget, Animation, AnimationId, ConnState, Event, Hue, Kelvin, Keyframe, LightId, Mode,
-    PerLightResult, Percent, PlaybackOptions, Selector, SkipReason, TargetBinding,
+    PerLightResult, Percent, PlaybackOptions, Selector, TargetBinding,
 };
 use lumiere_transport::sim::{SimConfig, SimLightSpec, SimTransport};
 use tokio::time::advance;
@@ -217,7 +217,7 @@ async fn applies_cct_to_all_connected_lights() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn rejects_unsupported_hsi_without_writing() {
+async fn converts_hsi_to_cct_on_bicolor_lights() {
     let (sim, registry) = setup(four_lights()).await;
     let id = LightId::sim("snl660");
     let mode = Mode::Hsi {
@@ -235,14 +235,25 @@ async fn rejects_unsupported_hsi_without_writing() {
         )
         .await
         .unwrap();
+    // Green (hue 120) lands mid-ramp in the 3200 to 5600 K range: 4000 K.
+    let expected = Mode::Cct {
+        temp: Kelvin::new(4000).unwrap(),
+        bri: Percent::new(60).unwrap(),
+    };
     assert_eq!(
         results,
-        vec![PerLightResult::Skipped {
+        vec![PerLightResult::Adapted {
             id: id.clone(),
-            reason: SkipReason::UnsupportedMode,
+            requested: mode,
+            applied: expected,
         }]
     );
-    assert!(sim.light(&id).timeline().is_empty());
+    // The SNL660 needs split packets: brightness then temperature.
+    let timeline = sim.light(&id).timeline();
+    assert_eq!(
+        timeline.iter().map(|(_, d)| *d).collect::<Vec<_>>(),
+        vec![Decoded::BriOnly(60), Decoded::TempOnly(40)]
+    );
     registry.shutdown().await;
 }
 

@@ -1,4 +1,4 @@
-use lumiere_proto::{Capabilities, Kelvin, Mode};
+use lumiere_proto::{Capabilities, Hue, Kelvin, Mode, Percent};
 use thiserror::Error;
 
 /// One complete Neewer BLE command packet.
@@ -147,6 +147,34 @@ pub fn decode(raw: &[u8]) -> Result<Decoded, DecodeError> {
     }
 }
 
+/// Approximates an HSI color as a CCT mode for lights that cannot do color.
+///
+/// The reference maps hue bands into the light's temperature range: warm hues
+/// (reds, oranges, magentas) sit at the warm end, greens ramp toward the
+/// middle, cyans and blues ramp to the cool end. Saturation is ignored. The
+/// math runs in hundreds-of-kelvin units to match the reference's integer
+/// rounding exactly.
+pub fn hsi_to_cct(hue: Hue, bri: Percent, caps: &Capabilities) -> Mode {
+    let min = i32::from(caps.cct_min.get() / 100);
+    let max = i32::from(caps.cct_max.get() / 100);
+    let mid = (min + max) / 2;
+    let hue = i32::from(hue.get());
+    let temp = if !(61..300).contains(&hue) {
+        min
+    } else if hue <= 150 {
+        min + (hue - 60) * (max - min) / 2 / 90
+    } else if hue <= 250 {
+        mid + (hue - 150) * (max - mid) / 100
+    } else {
+        mid
+    };
+    let temp = temp.clamp(min, max) as u16 * 100;
+    Mode::Cct {
+        temp: Kelvin::new(temp).expect("capability ranges are valid Kelvin"),
+        bri,
+    }
+}
+
 /// Clamps CCT modes to device limits and rounds temperature to the nearest 100 K.
 pub fn clamp_to_device(mode: Mode, caps: &Capabilities) -> (Mode, bool) {
     let Mode::Cct { temp, bri } = mode else {
@@ -283,6 +311,44 @@ mod tests {
                 };
                 prop_assert_eq!(decoded, expected);
             }
+        }
+    }
+
+    #[test]
+    fn hsi_to_cct_matches_the_reference_band_math() {
+        // Oracle values from executing the Python hsiToCCTByteVal with the
+        // GL1 PRO range (2900 to 7000 K); temps in hundreds of kelvin.
+        let mut caps = caps(false);
+        caps.cct_min = Kelvin::new(2900).unwrap();
+        caps.cct_max = Kelvin::new(7000).unwrap();
+        let oracle = [
+            (0, 29),
+            (30, 29),
+            (60, 29),
+            (61, 29),
+            (90, 35),
+            (120, 42),
+            (150, 49),
+            (151, 49),
+            (200, 59),
+            (250, 70),
+            (251, 49),
+            (280, 49),
+            (299, 49),
+            (300, 29),
+            (330, 29),
+            (359, 29),
+        ];
+        for (hue, temp_hk) in oracle {
+            let mode = hsi_to_cct(Hue::new(hue).unwrap(), Percent::new(50).unwrap(), &caps);
+            assert_eq!(
+                mode,
+                Mode::Cct {
+                    temp: Kelvin::new(temp_hk * 100).unwrap(),
+                    bri: Percent::new(50).unwrap(),
+                },
+                "hue {hue}"
+            );
         }
     }
 
