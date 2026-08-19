@@ -21,6 +21,8 @@ pub struct AppState {
     pub conn: Signal<ConnStatus>,
     pub token: Signal<Option<String>>,
     pub selection: Signal<HashSet<LightId>>,
+    /// False until the open-server probe has answered once.
+    pub auth_probed: Signal<bool>,
     pub expanded: Signal<HashSet<LightId>>,
     pub error: Signal<Option<String>>,
 }
@@ -36,6 +38,7 @@ impl AppState {
             conn: Signal::new(ConnStatus::Connecting),
             token: Signal::new(token),
             selection: Signal::new(HashSet::new()),
+            auth_probed: Signal::new(false),
             expanded: Signal::new(HashSet::new()),
             error: Signal::new(None),
         }

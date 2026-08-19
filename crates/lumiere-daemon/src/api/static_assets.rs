@@ -27,9 +27,25 @@ mod implementation {
     use super::*;
 
     pub fn router() -> Router {
+        let root = web_root();
+        match std::fs::metadata(root.join("index.html")).and_then(|meta| meta.modified()) {
+            Ok(modified) => {
+                let age = modified.elapsed().map(|age| age.as_secs()).unwrap_or(0);
+                println!(
+                    "Web UI: {} (built {}m {}s ago; rebuild with: mise run ui)",
+                    root.display(),
+                    age / 60,
+                    age % 60,
+                );
+            }
+            Err(_) => println!(
+                "Web UI: {} (no bundle; build with: mise run ui)",
+                root.display()
+            ),
+        }
         // SPA deep links must serve index.html with a 200; not_found_service
         // would force the status to 404, while fallback preserves the status.
-        Router::new().fallback_service(ServeDir::new(web_root()).fallback(any(spa_fallback)))
+        Router::new().fallback_service(ServeDir::new(root).fallback(any(spa_fallback)))
     }
 
     async fn spa_fallback(request: Request<Body>) -> Response {
