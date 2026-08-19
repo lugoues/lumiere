@@ -169,6 +169,17 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         "HSI"
                     }
                 }
+                div { class: "spacer" }
+                button {
+                    class: "btn success compact",
+                    onclick: move |_| send_mode(state, on_id.clone(), Mode::On),
+                    "On"
+                }
+                button {
+                    class: "btn danger compact",
+                    onclick: move |_| send_mode(state, off_id.clone(), Mode::Off),
+                    "Off"
+                }
             }
             if tab() == Tab::Cct || !rgb {
                 div { class: "mode-pane drawer-mode-pane",
@@ -237,20 +248,6 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                             send_mode(state, hsi_bri_id.clone(), hsi_mode(eff_hue, eff_sat, value));
                         },
                     }
-                }
-            }
-            div { class: "power-row",
-                span { "Power" }
-                div { class: "spacer" }
-                button {
-                    class: "btn success compact",
-                    onclick: move |_| send_mode(state, on_id.clone(), Mode::On),
-                    "On"
-                }
-                button {
-                    class: "btn danger compact",
-                    onclick: move |_| send_mode(state, off_id.clone(), Mode::Off),
-                    "Off"
                 }
             }
         }

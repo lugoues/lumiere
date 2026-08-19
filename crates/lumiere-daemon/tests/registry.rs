@@ -115,6 +115,18 @@ async fn wait_until(mut condition: impl FnMut() -> bool) {
     assert!(condition(), "condition did not become true");
 }
 
+/// Like wait_until, but also advances paused time so paced writes can drain.
+async fn wait_until_with_time(mut condition: impl FnMut() -> bool) {
+    for _ in 0..200 {
+        if condition() {
+            return;
+        }
+        advance(Duration::from_millis(25)).await;
+        tokio::task::yield_now().await;
+    }
+    assert!(condition(), "condition did not become true");
+}
+
 async fn set_mode_with_time(
     registry: &RegistryHandle,
     selector: Selector,
@@ -192,18 +204,25 @@ async fn applies_cct_to_all_connected_lights() {
     for id in ["rgb660", "rgb176", "sl80"] {
         assert!(matches!(
             sim.light(&LightId::sim(id)).timeline().as_slice(),
-            [(
-                _,
-                Decoded::Cct {
-                    temp_hk: 42,
-                    bri: 70
-                }
-            )]
+            [
+                (_, Decoded::Power(true)),
+                (
+                    _,
+                    Decoded::Cct {
+                        temp_hk: 42,
+                        bri: 70
+                    }
+                )
+            ]
         ));
     }
     assert!(matches!(
         sim.light(&LightId::sim("snl660")).timeline().as_slice(),
-        [(_, Decoded::BriOnly(70)), (_, Decoded::TempOnly(42))]
+        [
+            (_, Decoded::Power(true)),
+            (_, Decoded::BriOnly(70)),
+            (_, Decoded::TempOnly(42))
+        ]
     ));
     assert!(
         registry
@@ -252,7 +271,11 @@ async fn converts_hsi_to_cct_on_bicolor_lights() {
     let timeline = sim.light(&id).timeline();
     assert_eq!(
         timeline.iter().map(|(_, d)| *d).collect::<Vec<_>>(),
-        vec![Decoded::BriOnly(60), Decoded::TempOnly(40)]
+        vec![
+            Decoded::Power(true),
+            Decoded::BriOnly(60),
+            Decoded::TempOnly(40)
+        ]
     );
     registry.shutdown().await;
 }
@@ -287,13 +310,16 @@ async fn adapts_cct_to_the_device_range() {
     );
     assert!(matches!(
         sim.light(&id).timeline().as_slice(),
-        [(
-            _,
-            Decoded::Cct {
-                temp_hk: 56,
-                bri: 50
-            }
-        )]
+        [
+            (_, Decoded::Power(true)),
+            (
+                _,
+                Decoded::Cct {
+                    temp_hk: 56,
+                    bri: 50
+                }
+            )
+        ]
     ));
     registry.shutdown().await;
 }
@@ -341,7 +367,7 @@ async fn desired_watch_coalesces_bursts() {
         assert!(result.is_empty());
     }
     advance(Duration::from_secs(1)).await;
-    wait_until(|| {
+    wait_until_with_time(|| {
         matches!(
             sim.light(&id).last(),
             Some((_, Decoded::Hsi { hue: 9, .. }))
@@ -349,7 +375,7 @@ async fn desired_watch_coalesces_bursts() {
     })
     .await;
     let timeline = sim.light(&id).timeline();
-    assert!(timeline.len() < 10, "timeline was {timeline:?}");
+    assert!(timeline.len() < 11, "timeline was {timeline:?}");
     assert!(matches!(
         timeline.last(),
         Some((_, Decoded::Hsi { hue: 9, .. }))
@@ -427,7 +453,7 @@ async fn reconnect_replays_the_acked_mode_not_a_stale_one() {
         .set_mode(selector.clone(), hsi(10), false)
         .await
         .unwrap();
-    wait_until(|| {
+    wait_until_with_time(|| {
         handle
             .last()
             .is_some_and(|(_, d)| matches!(d, Decoded::Hsi { hue: 10, .. }))
@@ -454,7 +480,11 @@ async fn reconnect_replays_the_acked_mode_not_a_stale_one() {
     })
     .await;
     advance(Duration::from_millis(250)).await;
-    wait_until(|| handle.timeline().len() > writes_after_ack).await;
+    wait_until_with_time(|| {
+        handle.timeline().len() > writes_after_ack
+            && matches!(handle.last(), Some((_, Decoded::Hsi { .. })))
+    })
+    .await;
 
     let (_, last) = handle.last().unwrap();
     let timeline: Vec<_> = handle.timeline().into_iter().map(|(_, d)| d).collect();
@@ -559,8 +589,9 @@ async fn animation_playback_updates_all_lights_and_world_state() {
             .light(&LightId::sim(&index.to_string()))
             .timeline()
             .into_iter()
-            .map(|(_, mode)| match mode {
-                Decoded::Hsi { hue, .. } => hue,
+            .filter_map(|(_, mode)| match mode {
+                Decoded::Hsi { hue, .. } => Some(hue),
+                Decoded::Power(true) => None,
                 other => panic!("unexpected animation write: {other:?}"),
             })
             .collect::<Vec<_>>();

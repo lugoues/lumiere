@@ -1006,3 +1006,22 @@ input[type="checkbox"] {
         grid-template-columns: 1fr;
     }
 }
+
+/* Drawer tabs row carries the power buttons on the right. */
+.drawer-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Every control on a preset title line shares one height, vertically centered. */
+.preset-card-heading,
+.preset-actions {
+    align-items: center;
+}
+.preset-card-heading .btn,
+.preset-actions button {
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+}
