@@ -32,14 +32,14 @@ mod implementation {
             Ok(modified) => {
                 let age = modified.elapsed().map(|age| age.as_secs()).unwrap_or(0);
                 println!(
-                    "Web UI: {} (built {}m {}s ago; rebuild with: mise run ui)",
+                    "Web UI: {} (built {}m {}s ago; rebuild with: mise run build-ui)",
                     root.display(),
                     age / 60,
                     age % 60,
                 );
             }
             Err(_) => println!(
-                "Web UI: {} (no bundle; build with: mise run ui)",
+                "Web UI: {} (no bundle; build with: mise run build-ui)",
                 root.display()
             ),
         }

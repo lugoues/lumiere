@@ -1,7 +1,6 @@
 # Developer tooling for the Lumière repo. mise provisions the toolchain and
 # wraps common dev tasks; it is NOT required to *use* the binary.
 
-
 [settings]
 activate_aggressive = true
 aqua.minisign = true
@@ -19,22 +18,25 @@ plugin_autoupdate_last_check_duration = "2d"
 task.output = "keep-order"
 use_versions_host = true
 
-
 [tools]
 rust = "latest"
 "aqua:cli/cli" = "latest"
 "npm:@openai/codex" = "latest"
 "cargo:dioxus-cli" = "latest"
 
-
 [tasks.build]
-description = "Build the web UI and a release daemon with embedded assets"
-run = "cargo xtask dist"
+description = "Build the daemon and CLI (debug)"
+run = "cargo build -p lumiere-daemon -p lumiere-cli"
 
-[tasks.ui]
-description = "Rebuild the web UI bundle into dist/web"
+[tasks.build-ui]
+description = "Build the web UI bundle into dist/web"
 run = "cargo xtask ui"
 
-[tasks.sim]
-description = "Run the daemon against four simulated lights"
-run = ["cargo xtask ui --debug", "cargo run -p lumiere-daemon -- --sim"]
+[tasks.lumi]
+description = "Build everything and run the daemon on localhost:9091 (extra args pass through, e.g. mise run lumi -- --sim)"
+depends = ["build", "build-ui"]
+run = "./target/debug/lumiere-daemon --bind 127.0.0.1:9091"
+
+[tasks.dist]
+description = "Release archive: optimized UI embedded in a release daemon"
+run = "cargo xtask dist"
