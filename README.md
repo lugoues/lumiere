@@ -24,7 +24,7 @@ For development without Bluetooth hardware, run the daemon against its simulated
 cargo run -p lumiere-daemon -- --sim
 ```
 
-The daemon prints its API token and a bootstrap URL such as `http://127.0.0.1:8080/#t=TOKEN`. Open that URL once. The UI saves the token in browser storage and removes it from the address bar. The token is also available in `config.toml`.
+The daemon prints its API token and a bootstrap URL such as `http://127.0.0.1:9091/#t=TOKEN`. Open that URL once. The UI saves the token in browser storage and removes it from the address bar. The token is also available in `config.toml`.
 
 **On macOS, always use `brew services start lumiere` without `sudo`. Bluetooth TCC permissions require a user LaunchAgent. Using sudo creates a LaunchDaemon, which macOS does not grant Bluetooth access.**
 
