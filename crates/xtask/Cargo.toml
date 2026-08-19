@@ -1,0 +1,11 @@
+[package]
+name = "xtask"
+description = "Repo automation: dist builds and the one-off animation converter"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+lumiere-core.workspace = true
+serde_json.workspace = true

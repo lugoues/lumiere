@@ -1,0 +1,15 @@
+[package]
+name = "lumiere-proto"
+description = "Wire vocabulary shared between the Lumière daemon and its clients"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+smol_str.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

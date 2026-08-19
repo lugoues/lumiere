@@ -1,0 +1,647 @@
+{
+ "Apollo": {
+  "cct_max": 5600,
+  "cct_min": 5600,
+  "cct_only": true
+ },
+ "BH30S": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "CB60": {
+  "cct_max": 6500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "CL124": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "GL1": {
+  "cct_max": 7000,
+  "cct_min": 2900,
+  "cct_only": true
+ },
+ "NEEWER Apollo": {
+  "cct_max": 5600,
+  "cct_min": 5600,
+  "cct_only": true
+ },
+ "NEEWER BH30S": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER CB60": {
+  "cct_max": 6500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER CL124": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER GL1": {
+  "cct_max": 7000,
+  "cct_min": 2900,
+  "cct_only": true
+ },
+ "NEEWER NL140": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER RGB C80": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB CB60": {
+  "cct_max": 6500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER RGB-P200": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB-P280": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB1": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB1000": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER RGB1200": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER RGB140": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER RGB168": {
+  "cct_max": 8500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER RGB176": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB176 A1": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB190": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB450": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB480": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB512": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER RGB530": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB530PRO": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB650": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB660": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB660PRO": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER RGB800": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER RGB960": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER SL-90": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER SL70": {
+  "cct_max": 8500,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER SL80": {
+  "cct_max": 8500,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER SNL1320": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER SNL1920": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER SNL480": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER SNL530": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER SNL660": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER SNL960": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER SRP16": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER SRP18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER WRP18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER ZK-RY": {
+  "cct_max": 5600,
+  "cct_min": 5600,
+  "cct_only": false
+ },
+ "NEEWER ZRP16": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-Apollo": {
+  "cct_max": 5600,
+  "cct_min": 5600,
+  "cct_only": true
+ },
+ "NEEWER-BH30S": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-CB60": {
+  "cct_max": 6500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-CL124": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-GL1": {
+  "cct_max": 7000,
+  "cct_min": 2900,
+  "cct_only": true
+ },
+ "NEEWER-NL140": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-RGB C80": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB CB60": {
+  "cct_max": 6500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-RGB-P200": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB-P280": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB1": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB1000": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-RGB1200": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-RGB140": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-RGB168": {
+  "cct_max": 8500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-RGB176": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB176 A1": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB190": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB450": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB480": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB512": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-RGB530": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB530PRO": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB650": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB660": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB660PRO": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-RGB800": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-RGB960": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-SL-90": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "NEEWER-SL70": {
+  "cct_max": 8500,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-SL80": {
+  "cct_max": 8500,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "NEEWER-SNL1320": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-SNL1920": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-SNL480": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-SNL530": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-SNL660": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-SNL960": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-SRP16": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-SRP18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-WRP18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NEEWER-ZK-RY": {
+  "cct_max": 5600,
+  "cct_min": 5600,
+  "cct_only": false
+ },
+ "NEEWER-ZRP16": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "NL140": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "RGB C80": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB CB60": {
+  "cct_max": 6500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "RGB-P200": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB-P280": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB1": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB1000": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "RGB1200": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "RGB140": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "RGB168": {
+  "cct_max": 8500,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "RGB176": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB176 A1": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB190": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB450": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB480": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB512": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "RGB530": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB530PRO": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB650": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB660": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB660PRO": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "RGB800": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "RGB960": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "SL-90": {
+  "cct_max": 10000,
+  "cct_min": 2500,
+  "cct_only": false
+ },
+ "SL70": {
+  "cct_max": 8500,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "SL80": {
+  "cct_max": 8500,
+  "cct_min": 3200,
+  "cct_only": false
+ },
+ "SNL1320": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "SNL1920": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "SNL480": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "SNL530": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "SNL660": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "SNL960": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "SRP16": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "SRP18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "WRP18": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ },
+ "ZK-RY": {
+  "cct_max": 5600,
+  "cct_min": 5600,
+  "cct_only": false
+ },
+ "ZRP16": {
+  "cct_max": 5600,
+  "cct_min": 3200,
+  "cct_only": true
+ }
+}

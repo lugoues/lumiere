@@ -1,0 +1,26 @@
+# Developer tooling for the Lumière repo. mise provisions the toolchain and
+# wraps common dev tasks; it is NOT required to *use* the binary.
+
+
+[settings]
+activate_aggressive = true
+aqua.minisign = true
+aqua.slsa = true
+auto_install = true
+disable_backends = ["asdf", "gen", "dotnet", "spm", "ubi", "bun"]
+exec_auto_install = true
+experimental = true
+idiomatic_version_file_enable_tools = []
+jobs = 8
+lockfile = true
+not_found_auto_install = true
+npm = { package_manager = "aube" }
+plugin_autoupdate_last_check_duration = "2d"
+task.output = "keep-order"
+use_versions_host = true
+
+
+[tools]
+rust = "latest"
+"aqua:cli/cli" = "latest"
+"npm:@openai/codex" = "latest"

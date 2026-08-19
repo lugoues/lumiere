@@ -1,0 +1,14 @@
+{
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4": {
+      "version": "4.0.0",
+      "resolved": "ghcr.io/devcontainers/features/docker-in-docker@sha256:4fa87399214366e320d489991769c4f3f461e1ffe461f54eea78a41b34945bb5",
+      "integrity": "sha256:4fa87399214366e320d489991769c4f3f461e1ffe461f54eea78a41b34945bb5"
+    },
+    "ghcr.io/lugoues/devcontainer-features/mise:latest": {
+      "version": "1.0.7",
+      "resolved": "ghcr.io/lugoues/devcontainer-features/mise@sha256:43fc60dac3af9e24620e316725d6e8f5d6060f81991d77928ed8a94e0c17f9ad",
+      "integrity": "sha256:43fc60dac3af9e24620e316725d6e8f5d6060f81991d77928ed8a94e0c17f9ad"
+    }
+  }
+}

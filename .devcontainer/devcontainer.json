@@ -1,0 +1,36 @@
+{
+	"containerEnv": {
+		"MISE_DATA_DIR": "/mnt/mise-data",
+		"MISE_TRUSTED_CONFIG_PATHS": "${env:MISE_TRUSTED_CONFIG_PATHS}:${workspaceFolder}/.mise"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:4": {
+			"moby": false
+		},
+		"ghcr.io/lugoues/devcontainer-features/mise:latest": {}
+	},
+	"image": "mcr.microsoft.com/devcontainers/base:trixie",
+	"mounts": [
+		{
+			"source": "mise-data-volume",
+			"target": "/mnt/mise-data",
+			"type": "volume"
+		},
+		"source=/etc/localtime,target=/usr/share/zoneinfo/hostlocaltime,type=bind,readonly"
+	],
+
+  "runArgs": [
+    "${localEnv:DEVCONTAINER_USERNS_ARG}"
+],
+	"name": "Lumière",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"dustypomerleau.rust-syntax",
+				"tombi-toml.tombi",
+				"vadimcn.vscode-lldb"
+			]
+		}
+	}
+}
