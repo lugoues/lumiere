@@ -172,6 +172,25 @@ impl ApiClient {
         decode(request.send().await.map_err(network)?).await
     }
 
+    pub async fn recapture_preset(
+        self,
+        id: &PresetId,
+        selector: Option<Selector>,
+    ) -> Result<Preset, ApiError> {
+        #[derive(Serialize)]
+        struct RecaptureRequest {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            selector: Option<Selector>,
+        }
+
+        let path = format!("/api/v1/presets/{id}/capture");
+        let request = self
+            .request(&path, Request::post)?
+            .json(&RecaptureRequest { selector })
+            .map_err(network)?;
+        decode(request.send().await.map_err(network)?).await
+    }
+
     pub async fn rename_preset(self, id: &PresetId, name: String) -> Result<Preset, ApiError> {
         #[derive(Serialize)]
         struct RenameRequest {

@@ -488,23 +488,30 @@ input[type="checkbox"] {
 .preset-card-heading {
     display: flex;
     align-items: center;
+    gap: 4px;
     min-height: 24px;
+    white-space: nowrap;
 }
 
 .preset-card-heading h3 {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
     font-size: 12px;
     font-weight: 600;
+    text-overflow: ellipsis;
 }
 
 .preset-actions {
     display: flex;
+    flex: none;
     gap: 2px;
 }
 
 .preset-actions button {
-    width: 20px;
     height: 20px;
+    min-width: 20px;
+    padding: 2px 5px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg2);
@@ -587,12 +594,6 @@ input[type="checkbox"] {
 .preset-mode {
     color: var(--muted);
     white-space: nowrap;
-}
-
-.preset-card-footer {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 7px;
 }
 
 .animations-card {
