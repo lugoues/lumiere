@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Dioxus CLI
+        run: cargo install --locked dioxus-cli
+      - name: Build web UI
+        working-directory: crates/lumiere-ui
+        run: dx build --platform web --release
+      - name: Collect web UI
+        run: |
+          mkdir -p dist/web
+          cp -R target/dx/lumiere-ui/release/web/public/. dist/web/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-bundle
+          path: dist/web
+
+  build:
+    needs: ui
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-bundle
+          path: dist/web
+      # lumiere-transport enables dbus's vendored feature, so Linux needs no
+      # system libdbus development package.
+      - name: Build binaries
+        run: |
+          cargo build --release --target "${{ matrix.target }}" --features embed-ui -p lumiere-daemon
+          cargo build --release --target "${{ matrix.target }}" -p lumiere-cli
+      - name: Package binaries
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          archive="lumiere-${tag}-${{ matrix.target }}.tar.gz"
+          tar -czf "${archive}" -C "target/${{ matrix.target }}/release" lumiere-daemon lumiere
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: lumiere-*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-artifacts/*.tar.gz
