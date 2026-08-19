@@ -759,7 +759,11 @@ impl Registry {
         let input_tx = self.input_tx.clone();
         let cancel = self.cancel.clone();
         self.tracker.spawn(async move {
-            let Ok(mut scan) = transport.scan(ScanFilter::default()).await else {
+            // Everything else on the air (headphones, watches, beacons) is noise.
+            let filter = ScanFilter {
+                name_prefix: Some("NEEWER".to_owned()),
+            };
+            let Ok(mut scan) = transport.scan(filter).await else {
                 return;
             };
             let deadline = tokio::time::sleep(duration);

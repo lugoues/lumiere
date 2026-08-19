@@ -25,3 +25,16 @@ rust = "latest"
 "aqua:cli/cli" = "latest"
 "npm:@openai/codex" = "latest"
 "cargo:dioxus-cli" = "latest"
+
+
+[tasks.build]
+description = "Build the web UI and a release daemon with embedded assets"
+run = "cargo xtask dist"
+
+[tasks.ui]
+description = "Rebuild the web UI bundle into dist/web"
+run = "cargo xtask ui"
+
+[tasks.sim]
+description = "Run the daemon against four simulated lights"
+run = ["cargo xtask ui --debug", "cargo run -p lumiere-daemon -- --sim"]
