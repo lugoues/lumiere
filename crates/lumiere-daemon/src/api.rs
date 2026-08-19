@@ -96,7 +96,7 @@ pub fn router(state: ApiState) -> Router {
         rest.layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::list(origins))
-                .allow_methods([Method::GET, Method::POST])
+                .allow_methods([Method::GET, Method::POST, Method::PATCH])
                 .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE]),
         )
     };
@@ -236,7 +236,11 @@ async fn websocket(state: ApiState, mut socket: WebSocket) {
 
     let mut events = state.registry.events();
     let world = state.registry.world().borrow().as_ref().clone();
-    let replay = last_seq.and_then(|seq| state.registry.events_since(seq));
+    // A last_seq beyond our current seq means the client outlived a daemon
+    // restart: its numbering is from another life, so force a snapshot.
+    let replay = last_seq
+        .filter(|seq| *seq <= world.seq)
+        .and_then(|seq| state.registry.events_since(seq));
     let snapshot = if replay.is_some() {
         None
     } else {
@@ -252,13 +256,19 @@ async fn websocket(state: ApiState, mut socket: WebSocket) {
     if !send_json(&mut socket, &welcome).await {
         return;
     }
-    if let Some(replay) = replay
-        && !send_json(&mut socket, &ServerMsg::Patch { events: replay }).await
-    {
-        return;
+    // Start the duplicate filter past everything already delivered: events
+    // emitted between the world read and the ring read appear in the replay
+    // AND in the broadcast queue.
+    let mut last_seq = world.seq;
+    if let Some(replay) = replay {
+        if let Some(newest) = replay.last() {
+            last_seq = last_seq.max(newest.seq);
+        }
+        if !send_json(&mut socket, &ServerMsg::Patch { events: replay }).await {
+            return;
+        }
     }
 
-    let mut last_seq = world.seq;
     let mut last_sent = Instant::now();
     let mut missed_pongs = 0_u8;
     let mut keepalive = tokio::time::interval(KEEPALIVE_INTERVAL);
