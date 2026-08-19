@@ -1,0 +1,65 @@
+{
+  "id": "sunset-beach",
+  "name": "Sunset Beach",
+  "description": "Mixed warm CCT and orange HSI with independent light movement",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 25,
+          "sat": 80,
+          "bri": 60
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3500,
+          "bri": 50
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 10,
+          "sat": 70,
+          "bri": 45
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 55
+        }
+      }
+    },
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3500,
+          "bri": 50
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 15,
+          "sat": 75,
+          "bri": 55
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 45
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 30,
+          "sat": 70,
+          "bri": 50
+        }
+      }
+    }
+  ]
+}

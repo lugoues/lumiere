@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Capabilities, LightId, Mode};
+use crate::{Capabilities, LightId, Mode, PlaybackStatus};
 
 /// WebSocket wire protocol version supported by this crate.
 pub const WS_PROTOCOL_VERSION: u32 = 1;
@@ -36,6 +36,8 @@ pub struct LightSnapshot {
 pub struct WorldSnapshot {
     pub seq: u64,
     pub lights: Vec<LightSnapshot>,
+    #[serde(default)]
+    pub playback: Option<PlaybackStatus>,
 }
 
 /// A coarse world-state change.
@@ -44,6 +46,7 @@ pub struct WorldSnapshot {
 pub enum Event {
     Light { light: LightSnapshot },
     LightRemoved { id: LightId },
+    Playback { playback: Option<PlaybackStatus> },
 }
 
 /// An event with its monotonically increasing world sequence.

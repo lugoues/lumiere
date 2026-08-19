@@ -1,0 +1,141 @@
+{
+  "id": "pulse-cannon",
+  "name": "Pulse Cannon",
+  "description": "Sequential build-up flash across all 4 lights",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 100,
+      "fade_ms": 0,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 100
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        }
+      }
+    },
+    {
+      "hold_ms": 100,
+      "fade_ms": 0,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 100
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        }
+      }
+    },
+    {
+      "hold_ms": 100,
+      "fade_ms": 0,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 100
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        }
+      }
+    },
+    {
+      "hold_ms": 100,
+      "fade_ms": 0,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 100
+        }
+      }
+    },
+    {
+      "hold_ms": 300,
+      "fade_ms": 200,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 5
+        }
+      }
+    }
+  ]
+}

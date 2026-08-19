@@ -1,0 +1,81 @@
+{
+  "id": "ocean-waves",
+  "name": "Ocean Waves",
+  "description": "Slow blue-green undulation simulating ocean light",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 0,
+      "fade_ms": 0,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 200,
+          "sat": 70,
+          "bri": 60
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 2500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 80,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 210,
+          "sat": 60,
+          "bri": 45
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 2500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 170,
+          "sat": 90,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 195,
+          "sat": 75,
+          "bri": 55
+        }
+      }
+    },
+    {
+      "hold_ms": 0,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 185,
+          "sat": 65,
+          "bri": 85
+        }
+      }
+    }
+  ]
+}

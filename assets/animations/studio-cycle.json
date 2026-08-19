@@ -1,0 +1,113 @@
+{
+  "id": "studio-cycle",
+  "name": "Studio Cycle",
+  "description": "Rotating CCT temperatures across 4 lights for video variety",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 85
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 85
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 4800,
+          "bri": 85
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 85
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 85
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 85
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 85
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 4800,
+          "bri": 85
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 4800,
+          "bri": 85
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 85
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 85
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 85
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 85
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4800,
+          "bri": 85
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 85
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 85
+        }
+      }
+    }
+  ]
+}

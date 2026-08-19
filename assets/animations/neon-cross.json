@@ -1,0 +1,129 @@
+{
+  "id": "neon-cross",
+  "name": "Neon Cross",
+  "description": "Magenta and cyan criss-crossing across 4 lights",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 500,
+      "fade_ms": 600,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 30
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 30
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 500,
+      "fade_ms": 600,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 30
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 30
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 500,
+      "fade_ms": 600,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 30
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 80
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 30
+        }
+      }
+    },
+    {
+      "hold_ms": 500,
+      "fade_ms": 600,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 30
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 80
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 100,
+          "bri": 80
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 310,
+          "sat": 100,
+          "bri": 30
+        }
+      }
+    }
+  ]
+}

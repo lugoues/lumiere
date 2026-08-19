@@ -1,4 +1,4 @@
-use std::{error::Error, process::ExitCode, time::Duration};
+use std::{error::Error, fs, path::Path, process::ExitCode, time::Duration};
 
 use lumiere_daemon::{
     RegistryConfig, RegistryHandle,
@@ -43,6 +43,11 @@ where
     T: Transport,
 {
     let store_path = store::default_path()?;
+    let animations_dir = store_path
+        .parent()
+        .ok_or("light store path has no parent directory")?
+        .join("animations");
+    seed_animations(&animations_dir)?;
     let labels = store::load(&store_path)?;
     let (store_updates, store_task) = store::spawn(store_path, labels.clone());
     let registry = RegistryHandle::spawn_with_config(
@@ -50,6 +55,7 @@ where
         RegistryConfig {
             labels,
             store_updates: Some(store_updates),
+            animations_dir: Some(animations_dir),
             ..RegistryConfig::default()
         },
     );
@@ -71,6 +77,29 @@ where
     drop(registry);
     store_task.await??;
     result?;
+    Ok(())
+}
+
+fn seed_animations(destination: &Path) -> Result<(), Box<dyn Error>> {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/animations");
+    fs::create_dir_all(destination)?;
+    // Shipped animations are defaults: copy missing files, preserving every
+    // local file so future user edits are never overwritten on startup.
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_file()
+            || entry
+                .path()
+                .extension()
+                .is_none_or(|extension| extension != "json")
+        {
+            continue;
+        }
+        let output = destination.join(entry.file_name());
+        if !output.exists() {
+            fs::copy(entry.path(), output)?;
+        }
+    }
     Ok(())
 }
 

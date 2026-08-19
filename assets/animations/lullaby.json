@@ -1,0 +1,31 @@
+{
+  "id": "lullaby",
+  "name": "Lullaby",
+  "description": "Extremely slow warm dim fade for sleeping",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 15000,
+      "fade_ms": 15000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 10
+        }
+      }
+    },
+    {
+      "hold_ms": 15000,
+      "fade_ms": 15000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 5
+        }
+      }
+    }
+  ]
+}

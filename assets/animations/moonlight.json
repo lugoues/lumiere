@@ -1,0 +1,45 @@
+{
+  "id": "moonlight",
+  "name": "Moonlight",
+  "description": "Cool blue-white subtle breathing like moonlight through a window",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 220,
+          "sat": 15,
+          "bri": 35
+        }
+      }
+    },
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 225,
+          "sat": 20,
+          "bri": 25
+        }
+      }
+    },
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 215,
+          "sat": 12,
+          "bri": 30
+        }
+      }
+    }
+  ]
+}

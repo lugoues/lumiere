@@ -18,8 +18,9 @@ use axum::{
     routing::{any, get, patch, post},
 };
 use lumiere_proto::{
-    ClientMsg, CommandRequest, CommandResponse, LightId, ResyncReason, ServerMsg,
-    WS_PROTOCOL_VERSION, WorldSnapshot,
+    Animation, AnimationId, AnimationSummary, ClientMsg, CommandRequest, CommandResponse, LightId,
+    PlaybackOptions, PlaybackStatus, ResyncReason, ServerMsg, TargetBinding, WS_PROTOCOL_VERSION,
+    WorldSnapshot,
 };
 use rand::{TryRngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
@@ -81,6 +82,10 @@ pub fn router(state: ApiState) -> Router {
         .route("/lights/{id}/connect", post(connect))
         .route("/lights/{id}/disconnect", post(disconnect))
         .route("/command", post(command))
+        .route("/animations", get(animations))
+        .route("/animations/{id}", get(animation))
+        .route("/animations/{id}/play", post(play_animation))
+        .route("/playback/stop", post(stop_playback))
         .route("/ws-ticket", post(ws_ticket))
         .fallback(api_not_found)
         .layer(middleware::from_fn_with_state(state.clone(), authorize))
@@ -233,6 +238,71 @@ async fn command(
         .await
         .map_err(ApiError::registry)?;
     Ok(Json(CommandResponse { results }))
+}
+
+async fn animations(
+    State(state): State<ApiState>,
+) -> Result<Json<Vec<AnimationSummary>>, ApiError> {
+    state
+        .registry
+        .list_animations()
+        .await
+        .map(Json)
+        .map_err(ApiError::registry)
+}
+
+async fn animation(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+) -> Result<Json<Animation>, ApiError> {
+    let id = parse_animation_id(&id)?;
+    state
+        .registry
+        .animation(id)
+        .await
+        .map_err(ApiError::registry)?
+        .map(Json)
+        .ok_or_else(|| ApiError::not_found("animation was not found".to_owned()))
+}
+
+#[derive(Default, Deserialize)]
+struct PlayRequest {
+    #[serde(default)]
+    options: PlaybackOptions,
+    #[serde(default)]
+    binding: TargetBinding,
+}
+
+async fn play_animation(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+    Json(request): Json<PlayRequest>,
+) -> Result<Json<PlaybackStatus>, ApiError> {
+    let id = parse_animation_id(&id)?;
+    if state
+        .registry
+        .animation(id.clone())
+        .await
+        .map_err(ApiError::registry)?
+        .is_none()
+    {
+        return Err(ApiError::not_found(format!("animation {id} was not found")));
+    }
+    state
+        .registry
+        .play(id, request.options, request.binding)
+        .await
+        .map(Json)
+        .map_err(ApiError::conflict)
+}
+
+async fn stop_playback(State(state): State<ApiState>) -> Result<Json<serde_json::Value>, ApiError> {
+    let stopped = state
+        .registry
+        .stop_playback()
+        .await
+        .map_err(ApiError::registry)?;
+    Ok(Json(serde_json::json!({ "stopped": stopped })))
 }
 
 #[derive(Serialize)]
@@ -463,6 +533,13 @@ fn parse_id(value: &str) -> Result<LightId, ApiError> {
     })
 }
 
+fn parse_animation_id(value: &str) -> Result<AnimationId, ApiError> {
+    AnimationId::parse(value).map_err(|message| ApiError {
+        status: StatusCode::BAD_REQUEST,
+        message,
+    })
+}
+
 async fn api_not_found() -> Response {
     (
         StatusCode::NOT_FOUND,
@@ -507,6 +584,13 @@ impl ApiError {
     fn not_found(message: String) -> Self {
         Self {
             status: StatusCode::NOT_FOUND,
+            message,
+        }
+    }
+
+    fn conflict(message: String) -> Self {
+        Self {
+            status: StatusCode::CONFLICT,
             message,
         }
     }

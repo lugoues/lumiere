@@ -1,0 +1,57 @@
+{
+  "id": "christmas",
+  "name": "Christmas",
+  "description": "Alternating red and green holiday lights",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 1500,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 1500,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 120,
+          "sat": 100,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 1000,
+      "fade_ms": 1500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 80,
+          "bri": 50
+        }
+      }
+    },
+    {
+      "hold_ms": 1000,
+      "fade_ms": 1500,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 120,
+          "sat": 80,
+          "bri": 50
+        }
+      }
+    }
+  ]
+}

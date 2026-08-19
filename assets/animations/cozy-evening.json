@@ -1,0 +1,42 @@
+{
+  "id": "cozy-evening",
+  "name": "Cozy Evening",
+  "description": "Warm candlelight-temperature gentle breathing",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 45
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3400,
+          "bri": 35
+        }
+      }
+    },
+    {
+      "hold_ms": 5000,
+      "fade_ms": 5000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 40
+        }
+      }
+    }
+  ]
+}

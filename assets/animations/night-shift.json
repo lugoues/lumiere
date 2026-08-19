@@ -1,0 +1,31 @@
+{
+  "id": "night-shift",
+  "name": "Night Shift",
+  "description": "Very warm dim light for late night work",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 15000,
+      "fade_ms": 10000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 20
+        }
+      }
+    },
+    {
+      "hold_ms": 15000,
+      "fade_ms": 10000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3300,
+          "bri": 15
+        }
+      }
+    }
+  ]
+}

@@ -1,11 +1,16 @@
 //! Shared, platform-independent types used by Lumière.
 
+mod animation;
 mod caps;
 mod id;
 mod mode;
 mod selector;
 mod state;
 
+pub use animation::{
+    AnimTarget, Animation, AnimationId, AnimationSummary, Keyframe, PlaybackOptions,
+    PlaybackStatus, TargetBinding,
+};
 pub use caps::Capabilities;
 pub use id::{IdError, LightId};
 pub use mode::{Hue, Kelvin, Mode, Percent, RangeError, SceneId};

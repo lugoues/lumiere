@@ -1,0 +1,57 @@
+{
+  "id": "tropical",
+  "name": "Tropical",
+  "description": "Warm yellows, teals, and coral island sunset vibes",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 50,
+          "sat": 70,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 170,
+          "sat": 60,
+          "bri": 55
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 10,
+          "sat": 75,
+          "bri": 60
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 40,
+          "sat": 65,
+          "bri": 65
+        }
+      }
+    }
+  ]
+}

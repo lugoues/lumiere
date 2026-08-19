@@ -1,0 +1,69 @@
+{
+  "id": "stage-corners",
+  "name": "Stage Corners",
+  "description": "Opposite corner lights pulse in complementary colors",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 1000,
+      "fade_ms": 1500,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 80,
+          "bri": 30
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 30
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 80,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 1000,
+      "fade_ms": 1500,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 80,
+          "bri": 80
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 30
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 180,
+          "sat": 80,
+          "bri": 30
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 0,
+          "sat": 100,
+          "bri": 80
+        }
+      }
+    }
+  ]
+}

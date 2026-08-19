@@ -1,0 +1,139 @@
+{
+  "id": "flickering-candles",
+  "name": "Flickering Candles",
+  "description": "4 independent candles with randomized warm flickering",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 300,
+      "fade_ms": 200,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 40
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3300,
+          "bri": 55
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 35
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3400,
+          "bri": 50
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3300,
+          "bri": 55
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 30
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3400,
+          "bri": 50
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 40
+        }
+      }
+    },
+    {
+      "hold_ms": 400,
+      "fade_ms": 200,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 30
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3400,
+          "bri": 50
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3300,
+          "bri": 55
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 35
+        }
+      }
+    },
+    {
+      "hold_ms": 250,
+      "fade_ms": 150,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3400,
+          "bri": 50
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 45
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 30
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3300,
+          "bri": 55
+        }
+      }
+    },
+    {
+      "hold_ms": 350,
+      "fade_ms": 200,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 45
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 3300,
+          "bri": 55
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 3400,
+          "bri": 45
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3200,
+          "bri": 30
+        }
+      }
+    }
+  ]
+}

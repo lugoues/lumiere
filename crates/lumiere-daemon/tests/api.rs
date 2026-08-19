@@ -47,6 +47,9 @@ async fn spawn_test_server(store_path: Option<PathBuf>) -> Option<TestServer> {
         RegistryConfig {
             labels,
             store_updates: Some(store_updates),
+            animations_dir: Some(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/animations"),
+            ),
             ..RegistryConfig::default()
         },
     );
@@ -206,6 +209,78 @@ async fn auth_scan_and_command_cover_the_sim_world() {
                 .is_empty()
         );
     }
+    server.stop().await;
+}
+
+#[tokio::test]
+async fn animation_list_play_and_stop_round_trip() {
+    let Some(server) = spawn_test_server(None).await else {
+        return;
+    };
+    let client = Client::new();
+    scan_and_wait(&client, &server).await;
+    let response = client
+        .get(format!("{}/api/v1/animations", server.base))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let animations = response
+        .json::<Vec<lumiere_proto::AnimationSummary>>()
+        .await
+        .unwrap();
+    assert_eq!(animations.len(), 101);
+    assert!(
+        animations
+            .iter()
+            .any(|animation| animation.id.as_str() == "ambulance")
+    );
+
+    let response = client
+        .get(format!("{}/api/v1/animations/ambulance", server.base))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .json::<lumiere_proto::Animation>()
+            .await
+            .unwrap()
+            .id
+            .as_str(),
+        "ambulance"
+    );
+
+    let response = client
+        .post(format!("{}/api/v1/animations/ambulance/play", server.base))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({
+            "options": {"loop_override": false, "revert_on_finish": false}
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let status = response
+        .json::<lumiere_proto::PlaybackStatus>()
+        .await
+        .unwrap();
+    assert_eq!(status.animation.as_str(), "ambulance");
+
+    let response = client
+        .post(format!("{}/api/v1/playback/stop", server.base))
+        .bearer_auth(TOKEN)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response.json::<serde_json::Value>().await.unwrap(),
+        serde_json::json!({"stopped": true})
+    );
     server.stop().await;
 }
 

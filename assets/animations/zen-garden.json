@@ -1,0 +1,65 @@
+{
+  "id": "zen-garden",
+  "name": "Zen Garden",
+  "description": "Ultra slow green and warm white — calm and minimal",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 8000,
+      "fade_ms": 10000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 110,
+          "sat": 30,
+          "bri": 25
+        },
+        "2": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 30
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 120,
+          "sat": 25,
+          "bri": 20
+        },
+        "4": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 25
+        }
+      }
+    },
+    {
+      "hold_ms": 8000,
+      "fade_ms": 10000,
+      "lights": {
+        "1": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 25
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 115,
+          "sat": 28,
+          "bri": 22
+        },
+        "3": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 28
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 110,
+          "sat": 30,
+          "bri": 25
+        }
+      }
+    }
+  ]
+}

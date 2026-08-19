@@ -1,0 +1,31 @@
+{
+  "id": "reading-light",
+  "name": "Reading Light",
+  "description": "Gentle warm white reading lamp with very subtle variation",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 10000,
+      "fade_ms": 8000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 10000,
+      "fade_ms": 8000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 65
+        }
+      }
+    }
+  ]
+}

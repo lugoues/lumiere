@@ -1,0 +1,53 @@
+{
+  "id": "spotlight",
+  "name": "Spotlight",
+  "description": "Dramatic stage spotlight sweep with warm-cool cycles",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 500,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 100
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 500,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 5600,
+          "bri": 10
+        }
+      }
+    },
+    {
+      "hold_ms": 500,
+      "fade_ms": 2000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 100
+        }
+      }
+    },
+    {
+      "hold_ms": 200,
+      "fade_ms": 500,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 4000,
+          "bri": 10
+        }
+      }
+    }
+  ]
+}

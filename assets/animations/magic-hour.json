@@ -1,0 +1,67 @@
+{
+  "id": "magic-hour",
+  "name": "Magic Hour",
+  "description": "Mixed warm CCT fading through golden HSI into cool blue hour",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 3800,
+          "bri": 80
+        }
+      }
+    },
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 35,
+          "sat": 75,
+          "bri": 70
+        }
+      }
+    },
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 20,
+          "sat": 85,
+          "bri": 60
+        }
+      }
+    },
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "cct",
+          "temp": 6500,
+          "bri": 50
+        }
+      }
+    },
+    {
+      "hold_ms": 3000,
+      "fade_ms": 4000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 230,
+          "sat": 40,
+          "bri": 45
+        }
+      }
+    }
+  ]
+}

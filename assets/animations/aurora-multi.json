@@ -1,0 +1,99 @@
+{
+  "id": "aurora-multi",
+  "name": "Aurora Multi",
+  "description": "Northern lights with independent shifting across 4 lights",
+  "loop_default": true,
+  "slot_count": 4,
+  "keyframes": [
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 120,
+          "sat": 60,
+          "bri": 30
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 160,
+          "sat": 50,
+          "bri": 40
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 280,
+          "sat": 40,
+          "bri": 20
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 100,
+          "sat": 55,
+          "bri": 35
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 160,
+          "sat": 50,
+          "bri": 40
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 280,
+          "sat": 40,
+          "bri": 25
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 120,
+          "sat": 60,
+          "bri": 35
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 190,
+          "sat": 45,
+          "bri": 30
+        }
+      }
+    },
+    {
+      "hold_ms": 2000,
+      "fade_ms": 3000,
+      "lights": {
+        "1": {
+          "mode": "hsi",
+          "hue": 280,
+          "sat": 45,
+          "bri": 25
+        },
+        "2": {
+          "mode": "hsi",
+          "hue": 120,
+          "sat": 55,
+          "bri": 35
+        },
+        "3": {
+          "mode": "hsi",
+          "hue": 160,
+          "sat": 50,
+          "bri": 40
+        },
+        "4": {
+          "mode": "hsi",
+          "hue": 100,
+          "sat": 60,
+          "bri": 30
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "meditation",
+  "name": "Meditation",
+  "description": "Very slow deep blue breathing for calm and focus",
+  "loop_default": true,
+  "slot_count": 0,
+  "keyframes": [
+    {
+      "hold_ms": 8000,
+      "fade_ms": 8000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 230,
+          "sat": 40,
+          "bri": 30
+        }
+      }
+    },
+    {
+      "hold_ms": 8000,
+      "fade_ms": 8000,
+      "lights": {
+        "*": {
+          "mode": "hsi",
+          "hue": 240,
+          "sat": 35,
+          "bri": 15
+        }
+      }
+    }
+  ]
+}
