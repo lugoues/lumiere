@@ -1,7 +1,8 @@
 use dioxus::prelude::*;
 
 use super::{
-    control_panel::ControlPanel, header::Header, light_table::LightTable, token_gate::TokenGate,
+    animations_panel::AnimationsPanel, control_panel::ControlPanel, header::Header,
+    light_table::LightTable, presets_bar::PresetsBar, token_gate::TokenGate,
 };
 use crate::{platform, state::AppState, ws};
 
@@ -59,7 +60,9 @@ fn LiveApp() -> Element {
                 div { class: "card-header", "Lights" }
                 LightTable {}
             }
+            PresetsBar {}
             ControlPanel {}
+            AnimationsPanel {}
         }
     }
 }
