@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
-use lumiere_proto::{ConnState, LightId, LightSnapshot, Mode};
+use lumiere_proto::{ConnState, LightId, LightSnapshot};
 
+use super::{format::mode_summary, light_drawer::LightDrawer};
 use crate::state::AppState;
 
 #[component]
@@ -12,6 +13,7 @@ pub fn LightTable() -> Element {
         .map(|light| light.id.clone())
         .collect::<Vec<_>>();
     let selected = state.selection.read().clone();
+    let expanded = state.expanded.read().clone();
     let all_selected =
         !lights.is_empty() && lights.iter().all(|light| selected.contains(&light.id));
 
@@ -23,7 +25,7 @@ pub fn LightTable() -> Element {
                         th { class: "select-column",
                             input {
                                 r#type: "checkbox",
-                                aria_label: "Select all lights",
+                                aria_label: "Include all lights in preset capture",
                                 checked: all_selected,
                                 onchange: move |_| {
                                     let mut selection = state.selection.write();
@@ -54,6 +56,7 @@ pub fn LightTable() -> Element {
                         LightRow {
                             key: "{light.id}",
                             selected: selected.contains(&light.id),
+                            expanded: expanded.contains(&light.id),
                             light,
                         }
                     }
@@ -64,12 +67,13 @@ pub fn LightTable() -> Element {
 }
 
 #[component]
-fn LightRow(light: LightSnapshot, selected: bool) -> Element {
+fn LightRow(light: LightSnapshot, selected: bool, expanded: bool) -> Element {
     let mut state = use_context::<AppState>();
     let id = light.id.clone();
     let checkbox_id = id.clone();
+    let drawer_light = light.clone();
     let (connection_class, connection_text) = connection_summary(&light.conn);
-    let (mode_text, pending) = mode_summary(&light);
+    let (mode_text, pending) = light_mode_summary(&light);
     let row_class = if selected { "selected" } else { "" };
     let current_class = if pending {
         "mode-summary pending"
@@ -79,18 +83,21 @@ fn LightRow(light: LightSnapshot, selected: bool) -> Element {
 
     rsx! {
         tr {
-            class: "{row_class}",
-            onclick: move |_| toggle(&mut state.selection, &id),
-            td { class: "select-column",
+            class: "light-row {row_class}",
+            aria_expanded: expanded,
+            onclick: move |_| toggle(&mut state.expanded, &id),
+            td {
+                class: "select-column",
+                onclick: move |event| event.stop_propagation(),
                 input {
                     r#type: "checkbox",
-                    aria_label: "Select {light.label}",
+                    aria_label: "Include {light.label} in preset capture",
                     checked: selected,
-                    onclick: move |event| event.stop_propagation(),
                     onchange: move |_| toggle(&mut state.selection, &checkbox_id),
                 }
             }
             td {
+                span { class: if expanded { "chevron expanded" } else { "chevron" }, "›" }
                 div { class: "light-label", "{light.label}" }
                 div { class: "light-id", "{light.id}" }
             }
@@ -100,6 +107,11 @@ fn LightRow(light: LightSnapshot, selected: bool) -> Element {
             td { class: "{current_class}",
                 "{mode_text}"
                 if pending { span { class: "pending-label", "pending" } }
+            }
+        }
+        if expanded {
+            tr { class: "drawer-row",
+                td { colspan: 6, LightDrawer { light: drawer_light } }
             }
         }
     }
@@ -122,26 +134,17 @@ fn connection_summary(connection: &ConnState) -> (&'static str, String) {
     }
 }
 
-fn mode_summary(light: &LightSnapshot) -> (String, bool) {
+fn light_mode_summary(light: &LightSnapshot) -> (String, bool) {
     let (mode, pending) = match (light.confirmed, light.desired) {
         (Some(mode), _) => (Some(mode), false),
         (None, Some(mode)) => (Some(mode), true),
         (None, None) => (None, false),
     };
-    let summary = match mode {
-        Some(Mode::Off) => "Power off".into(),
-        Some(Mode::On) => "Power on".into(),
-        Some(Mode::Cct { temp, bri }) => format!("{} K · {}%", temp.get(), bri.get()),
-        Some(Mode::Hsi { hue, sat, bri }) => {
-            format!("{}° · S {}% · B {}%", hue.get(), sat.get(), bri.get())
-        }
-        Some(Mode::Scene { scene, bri }) => {
-            format!("Scene {} · {}%", scene.get(), bri.get())
-        }
-        None => light.power.map_or_else(
+    let summary = mode.map(mode_summary).unwrap_or_else(|| {
+        light.power.map_or_else(
             || "Unknown".into(),
             |power| if power { "On" } else { "Off" }.into(),
-        ),
-    };
+        )
+    });
     (summary, pending)
 }

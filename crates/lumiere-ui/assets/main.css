@@ -219,7 +219,7 @@ select:focus-visible {
     border-bottom: 1px solid var(--border);
 }
 
-.light-table tbody tr {
+.light-table tbody tr.light-row {
     cursor: pointer;
 }
 
@@ -227,13 +227,62 @@ select:focus-visible {
     border-bottom: 0;
 }
 
-.light-table tbody tr:hover td,
-.light-table tbody tr.selected td {
+.light-table tbody tr.light-row:hover td,
+.light-table tbody tr.light-row.selected td {
     background: rgba(91, 141, 239, .09);
 }
 
-.light-table tbody tr.selected td:first-child {
+.light-table tbody tr.light-row.selected td:first-child {
     box-shadow: inset 3px 0 var(--accent);
+}
+
+.light-row td:nth-child(2) {
+    position: relative;
+    padding-left: 28px;
+}
+
+.chevron {
+    position: absolute;
+    top: 50%;
+    left: 11px;
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    transform: translateY(-50%);
+    transition: transform .15s ease;
+}
+
+.chevron.expanded {
+    transform: translateY(-50%) rotate(90deg);
+}
+
+.drawer-row > td {
+    padding: 0 !important;
+    border-top: 1px solid var(--border);
+    background: rgba(36, 36, 58, .55);
+}
+
+.light-drawer {
+    padding: 14px 18px 12px 28px;
+}
+
+.drawer-tabs {
+    margin-bottom: 13px;
+}
+
+.drawer-tabs .mode-tab {
+    padding: 5px 16px;
+    font-size: 10px;
+}
+
+.drawer-mode-pane {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(180px, 1fr));
+    gap: 0 18px;
+}
+
+.drawer-mode-pane .range-note {
+    grid-column: 1 / -1;
 }
 
 .select-column {
@@ -319,79 +368,51 @@ input[type="checkbox"] {
     text-align: center;
 }
 
-.presets-bar {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+.presets-panel {
     min-width: 0;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--bg2);
 }
 
-.presets-title {
-    color: var(--green);
-    font-size: 11px;
-    font-weight: 650;
-    letter-spacing: .6px;
-    text-transform: uppercase;
+.presets-header {
+    flex-wrap: wrap;
 }
 
-.preset-strip {
+.preset-list {
     display: flex;
-    flex: 1;
-    align-items: stretch;
-    gap: 7px;
-    min-width: 0;
-    overflow-x: auto;
-    padding: 2px;
+    flex-direction: column;
+    gap: 9px;
+    padding: 10px;
 }
 
-.preset-item {
-    position: relative;
-    flex: 0 0 auto;
+.preset-empty {
+    padding: 18px 8px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+    text-align: center;
 }
 
-.preset-recall {
-    min-width: 90px;
-    height: 100%;
-    padding: 7px 25px 7px 10px;
+.preset-card {
+    padding: 10px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg3);
-    color: var(--text);
-    cursor: pointer;
-    text-align: left;
 }
 
-.preset-recall:hover {
-    border-color: var(--accent);
+.preset-card-heading {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
 }
 
-.preset-recall span,
-.preset-recall small {
-    display: block;
-}
-
-.preset-recall small {
-    margin-top: 2px;
-    color: var(--muted);
-    font-family: "Consolas", "Courier New", monospace;
-    font-size: 8px;
+.preset-card-heading h3 {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
 }
 
 .preset-actions {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    display: none;
-    gap: 2px;
-}
-
-.preset-item:hover .preset-actions,
-.preset-actions:focus-within {
     display: flex;
+    gap: 2px;
 }
 
 .preset-actions button {
@@ -419,6 +440,7 @@ input[type="checkbox"] {
 .preset-save,
 .preset-edit {
     display: flex;
+    flex: 1;
     gap: 4px;
 }
 
@@ -435,9 +457,55 @@ input[type="checkbox"] {
     color: var(--text);
 }
 
-.preset-add {
-    height: 100%;
+.preset-save input,
+.preset-edit input {
+    flex: 1;
+    width: 80px;
+}
+
+.preset-add,
+.preset-save .btn,
+.preset-edit .btn {
     white-space: nowrap;
+}
+
+.preset-entries {
+    margin-top: 8px;
+    list-style: none;
+}
+
+.preset-entries li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border-top: 1px solid rgba(60, 60, 80, .65);
+    font-size: 10px;
+}
+
+.preset-target {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 550;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preset-target.unknown {
+    color: var(--muted);
+    font-family: "Consolas", "Courier New", monospace;
+}
+
+.preset-mode {
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.preset-card-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 7px;
 }
 
 .animations-card {
@@ -576,23 +644,6 @@ input[type="checkbox"] {
 .play-button {
     width: 100%;
     margin-top: 14px;
-}
-
-.control-fieldset {
-    min-width: 0;
-    padding: 14px;
-    border: 0;
-}
-
-.control-fieldset:disabled {
-    opacity: .48;
-}
-
-.selection-note {
-    margin-left: auto;
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 400;
 }
 
 .mode-tabs {
@@ -850,16 +901,7 @@ input[type="checkbox"] {
         grid-column: auto;
     }
 
-    .control-card {
-        grid-row: 1;
-    }
-
-    .presets-bar {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .preset-strip {
-        width: 100%;
+    .drawer-mode-pane {
+        grid-template-columns: 1fr;
     }
 }
