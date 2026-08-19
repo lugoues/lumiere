@@ -28,9 +28,46 @@ async fn main() -> ExitCode {
     }
 }
 
+const USAGE: &str = "Usage: lumiere-daemon [OPTIONS]
+
+Options:
+  --sim              Serve four simulated lights instead of Bluetooth hardware
+  --bind ADDR:PORT   Listen address for this run, overriding the config file
+                     (example: --bind 127.0.0.1:9090)
+  -h, --help         Show this help
+
+The persistent listen address, auth token, and CORS origins live in the config
+file printed at startup. Environment overrides: LUMIERE_CONFIG_DIR,
+LUMIERE_DATA_DIR, LUMIERE_WEB_ROOT.";
+
 async fn run() -> Result<(), Box<dyn Error>> {
-    let config = Config::load_or_create()?;
-    let sim = std::env::args().any(|argument| argument == "--sim");
+    let mut sim = false;
+    let mut bind = None;
+    let mut args = std::env::args().skip(1);
+    while let Some(argument) = args.next() {
+        match argument.as_str() {
+            "--sim" => sim = true,
+            "--bind" => {
+                let value = args.next().ok_or("--bind requires ADDR:PORT")?;
+                bind = Some(value.parse().map_err(|_| {
+                    format!(
+                        "invalid --bind value {value:?}; expected ADDR:PORT like 127.0.0.1:9090"
+                    )
+                })?);
+            }
+            "-h" | "--help" => {
+                println!("{USAGE}");
+                return Ok(());
+            }
+            other => return Err(format!("unknown argument {other:?}\n\n{USAGE}").into()),
+        }
+    }
+
+    let mut config = Config::load_or_create()?;
+    if let Some(bind) = bind {
+        config.bind = bind;
+    }
+    println!("Config file: {}", Config::path()?.display());
     if sim {
         serve(sim_transport(), config).await
     } else {
