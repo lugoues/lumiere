@@ -327,6 +327,7 @@ select:focus-visible {
 .light-name-row {
     display: flex;
     align-items: center;
+    gap: 6px;
     min-height: 28px;
     margin-bottom: 10px;
 }
