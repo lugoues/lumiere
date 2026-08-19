@@ -34,6 +34,10 @@ Options:
   --sim              Serve four simulated lights instead of Bluetooth hardware
   --bind ADDR:PORT   Listen address for this run, overriding the config file
                      (example: --bind 127.0.0.1:9090)
+  --disable-authentication
+                     Serve the API without bearer-token checks for this run.
+                     Anyone who can reach the port controls the lights; meant
+                     for trusted networks like a tailnet or loopback.
   -h, --help         Show this help
 
 The persistent listen address, auth token, and CORS origins live in the config
@@ -43,6 +47,7 @@ LUMIERE_DATA_DIR, LUMIERE_WEB_ROOT.";
 async fn run() -> Result<(), Box<dyn Error>> {
     let mut sim = false;
     let mut bind = None;
+    let mut disable_authentication = false;
     let mut args = std::env::args().skip(1);
     while let Some(argument) = args.next() {
         match argument.as_str() {
@@ -55,6 +60,7 @@ async fn run() -> Result<(), Box<dyn Error>> {
                     )
                 })?);
             }
+            "--disable-authentication" => disable_authentication = true,
             "-h" | "--help" => {
                 println!("{USAGE}");
                 return Ok(());
@@ -69,13 +75,17 @@ async fn run() -> Result<(), Box<dyn Error>> {
     }
     println!("Config file: {}", Config::path()?.display());
     if sim {
-        serve(sim_transport(), config).await
+        serve(sim_transport(), config, disable_authentication).await
     } else {
-        serve(BleTransport::new().await?, config).await
+        serve(BleTransport::new().await?, config, disable_authentication).await
     }
 }
 
-async fn serve<T>(transport: T, config: Config) -> Result<(), Box<dyn Error>>
+async fn serve<T>(
+    transport: T,
+    config: Config,
+    disable_authentication: bool,
+) -> Result<(), Box<dyn Error>>
 where
     T: Transport,
 {
@@ -98,10 +108,18 @@ where
 
     let listener = tokio::net::TcpListener::bind(config.bind).await?;
     let bound = listener.local_addr()?;
-    println!("Lumière token: {}", config.token);
-    println!("Bootstrap URL: http://{bound}/#t={}", config.token);
+    let state = if disable_authentication {
+        tracing::warn!("authentication is DISABLED: anyone reaching this port controls the lights");
+        println!("Authentication: DISABLED (--disable-authentication)");
+        println!("Open: http://{bound}/");
+        ApiState::new(registry.clone(), &config).without_authentication()
+    } else {
+        println!("Lumière token: {}", config.token);
+        println!("Bootstrap URL: http://{bound}/#t={}", config.token);
+        ApiState::new(registry.clone(), &config)
+    };
 
-    let app = router(ApiState::new(registry.clone(), &config));
+    let app = router(state);
     let result = axum::serve(listener, app)
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;

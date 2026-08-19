@@ -24,6 +24,22 @@ pub fn App() -> Element {
     let error = state.error.read().clone();
     let authenticated = state.token.read().is_some();
 
+    // With no saved token the daemon may be running --disable-authentication:
+    // probe once, and adopt tokenless mode (empty token) if the API is open.
+    use_future(move || async move {
+        if state.token.peek().is_none() {
+            let probe = gloo_net::http::Request::get(&format!(
+                "{}/api/v1/lights",
+                platform::current_origin()
+            ))
+            .send()
+            .await;
+            if probe.is_ok_and(|response| response.status() == 200) {
+                state.token.set(Some(String::new()));
+            }
+        }
+    });
+
     rsx! {
         document::Title { "Lumière Control Panel" }
         document::Stylesheet { href: MAIN_CSS }

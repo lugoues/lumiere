@@ -46,6 +46,7 @@ const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(15);
 #[derive(Clone)]
 pub struct ApiState {
     registry: RegistryHandle,
+    require_token: bool,
     token: Arc<str>,
     cors_origins: Arc<[String]>,
     session: Arc<str>,
@@ -57,10 +58,18 @@ impl ApiState {
         Self {
             registry,
             token: Arc::from(config.token.as_str()),
+            require_token: true,
             cors_origins: Arc::from(config.cors_origins.clone()),
             session: Arc::from(random_hex(16)),
             tickets: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    /// Turns off bearer-token checks for every route. An explicit runtime
+    /// choice (--disable-authentication), never a persisted default.
+    pub fn without_authentication(mut self) -> Self {
+        self.require_token = false;
+        self
     }
 
     /// Returns the process-local session identifier.
@@ -578,6 +587,9 @@ async fn send_error_and_close(socket: &mut WebSocket, message: &str) {
 }
 
 async fn authorize(State(state): State<ApiState>, request: Request<Body>, next: Next) -> Response {
+    if !state.require_token {
+        return next.run(request).await;
+    }
     let authorized = request
         .headers()
         .get(header::AUTHORIZATION)

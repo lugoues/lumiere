@@ -206,6 +206,10 @@ impl ApiClient {
     ) -> Result<gloo_net::http::RequestBuilder, ApiError> {
         let token = self.token.peek().clone().ok_or(ApiError::Auth(AuthError))?;
         let url = format!("{}{path}", platform::current_origin());
+        // An empty token means the daemon runs with --disable-authentication.
+        if token.is_empty() {
+            return Ok(method(&url));
+        }
         Ok(method(&url).header("Authorization", &format!("Bearer {token}")))
     }
 }
