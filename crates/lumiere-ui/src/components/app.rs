@@ -27,16 +27,8 @@ pub fn App() -> Element {
     // With no saved token the daemon may be running --disable-authentication:
     // probe once, and adopt tokenless mode (empty token) if the API is open.
     use_future(move || async move {
-        if state.token.peek().is_none() {
-            let probe = gloo_net::http::Request::get(&format!(
-                "{}/api/v1/lights",
-                platform::current_origin()
-            ))
-            .send()
-            .await;
-            if probe.is_ok_and(|response| response.status() == 200) {
-                state.token.set(Some(String::new()));
-            }
+        if state.token.peek().is_none() && crate::api::server_is_open().await {
+            state.token.set(Some(String::new()));
         }
     });
 
