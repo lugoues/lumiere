@@ -7,6 +7,9 @@ use lumiere_proto::LightId;
 
 pub mod sim;
 
+#[cfg(feature = "btleplug")]
+pub mod ble;
+
 /// An error produced while discovering, connecting to, or writing to a light.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum TransportError {
@@ -28,6 +31,14 @@ pub enum TransportError {
     /// The link to a light is no longer connected.
     #[error("light {id} is disconnected")]
     Disconnected { id: LightId },
+    /// A platform Bluetooth operation failed.
+    #[error("Bluetooth operation failed{context}: {message}", context = id.as_ref().map(|id| format!(" for light {id}")).unwrap_or_default())]
+    Backend {
+        /// Light involved in the operation, when known.
+        id: Option<LightId>,
+        /// Human-readable platform error or missing-profile detail.
+        message: String,
+    },
 }
 
 /// Whether the transport has an adapter ready for use.

@@ -12,3 +12,9 @@ path = "src/main.rs"
 
 [dependencies]
 lumiere-proto.workspace = true
+lumiere-core.workspace = true
+lumiere-transport.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+futures.workspace = true

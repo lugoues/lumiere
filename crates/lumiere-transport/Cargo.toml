@@ -8,7 +8,7 @@ repository.workspace = true
 
 [features]
 default = ["btleplug"]
-btleplug = []
+btleplug = ["dep:btleplug", "dep:dbus"]
 
 [dependencies]
 lumiere-proto.workspace = true
@@ -19,6 +19,10 @@ futures.workspace = true
 async-trait.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+btleplug = { version = "0.11", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+dbus = { version = "0.9", features = ["vendored"], optional = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
