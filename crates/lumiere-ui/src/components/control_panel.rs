@@ -24,6 +24,38 @@ pub fn ControlPanel() -> Element {
     let mut hsi_bri = use_signal(|| 100_i32);
     let disabled = state.selection.read().is_empty();
 
+    // Capability envelope of the current selection: HSI only when at least one
+    // selected light does color, CCT bounded to the range every light accepts.
+    let selection = state.selection.read();
+    let world = state.world.read();
+    let selected = world
+        .lights
+        .iter()
+        .filter(|light| selection.contains(&light.id))
+        .collect::<Vec<_>>();
+    let any_rgb = selected.is_empty() || selected.iter().any(|light| light.caps.rgb);
+    let cct_min = selected
+        .iter()
+        .map(|light| i32::from(light.caps.cct_min.get()))
+        .max()
+        .unwrap_or(2500);
+    let cct_max = selected
+        .iter()
+        .map(|light| i32::from(light.caps.cct_max.get()))
+        .min()
+        .unwrap_or(10000);
+    let (cct_min, cct_max) = if cct_min < cct_max {
+        (cct_min, cct_max)
+    } else {
+        (2500, 10000)
+    };
+    drop(selection);
+    drop(world);
+    if !any_rgb && tab() == Tab::Hsi {
+        tab.set(Tab::Cct);
+    }
+    let shown_temp = cct_temp().clamp(cct_min, cct_max);
+
     rsx! {
         section { class: "card control-card",
             div { class: "card-header",
@@ -39,27 +71,29 @@ pub fn ControlPanel() -> Element {
                         onclick: move |_| tab.set(Tab::Cct),
                         "CCT"
                     }
-                    button {
-                        class: if tab() == Tab::Hsi { "mode-tab active" } else { "mode-tab" },
-                        role: "tab",
-                        aria_selected: tab() == Tab::Hsi,
-                        onclick: move |_| tab.set(Tab::Hsi),
-                        "HSI"
+                    if any_rgb {
+                        button {
+                            class: if tab() == Tab::Hsi { "mode-tab active" } else { "mode-tab" },
+                            role: "tab",
+                            aria_selected: tab() == Tab::Hsi,
+                            onclick: move |_| tab.set(Tab::Hsi),
+                            "HSI"
+                        }
                     }
                 }
                 if tab() == Tab::Cct {
                     div { class: "mode-pane",
                         GradientSlider {
                             label: "Color temperature",
-                            min: 2500,
-                            max: 10000,
-                            value: cct_temp(),
+                            min: cct_min,
+                            max: cct_max,
+                            value: shown_temp,
                             suffix: " K",
                             gradient: "linear-gradient(90deg, #ff9329 0%, #fff4dc 48%, #c9e2ff 100%)",
                             onchange: move |value| {
                                 cct_temp.set(value);
                                 send_mode(state, Mode::Cct {
-                                    temp: Kelvin::new(value as u16).expect("slider is in range"),
+                                    temp: Kelvin::new(value.clamp(2500, 10000) as u16).expect("clamped to the valid range"),
                                     bri: Percent::new(cct_bri() as u8).expect("slider is in range"),
                                 });
                             },
@@ -74,12 +108,12 @@ pub fn ControlPanel() -> Element {
                             onchange: move |value| {
                                 cct_bri.set(value);
                                 send_mode(state, Mode::Cct {
-                                    temp: Kelvin::new(cct_temp() as u16).expect("slider is in range"),
+                                    temp: Kelvin::new(cct_temp().clamp(2500, 10000) as u16).expect("clamped to the valid range"),
                                     bri: Percent::new(value as u8).expect("slider is in range"),
                                 });
                             },
                         }
-                        p { class: "range-note", "Using the full 2500 K to 10000 K range." }
+                        p { class: "range-note", "Range {cct_min} K to {cct_max} K for the selected lights." }
                     }
                 } else {
                     div { class: "mode-pane",

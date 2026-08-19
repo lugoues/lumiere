@@ -11,13 +11,16 @@ pub struct GradientSliderProps {
     pub onchange: EventHandler<i32>,
 }
 
-/// A range control with a gradient track and a release-only change callback.
+/// A range control with a gradient track.
+///
+/// Fires on every input event: dioxus-web does not reliably deliver the native
+/// change event for range inputs, and the daemon coalesces bursts per light
+/// anyway (latest write wins), so live preview is free.
 #[component]
 pub fn GradientSlider(props: GradientSliderProps) -> Element {
-    let mut visible_value = use_signal(|| props.value);
     let min_label = format!("{}{}", props.min, props.suffix);
     let max_label = format!("{}{}", props.max, props.suffix);
-    let value_label = format!("{}{}", visible_value(), props.suffix);
+    let value_label = format!("{}{}", props.value, props.suffix);
     let gradient = props.gradient.clone();
 
     rsx! {
@@ -37,12 +40,6 @@ pub fn GradientSlider(props: GradientSliderProps) -> Element {
                     style: "background: {gradient}",
                     oninput: move |event| {
                         if let Ok(value) = event.value().parse() {
-                            visible_value.set(value);
-                        }
-                    },
-                    onchange: move |event| {
-                        if let Ok(value) = event.value().parse() {
-                            visible_value.set(value);
                             props.onchange.call(value);
                         }
                     },
