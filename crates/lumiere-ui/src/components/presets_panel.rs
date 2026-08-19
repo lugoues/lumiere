@@ -16,6 +16,7 @@ pub fn PresetsPanel() -> Element {
     let mut save_name = use_signal(String::new);
     let mut editing = use_signal(|| None::<PresetId>);
     let mut edit_name = use_signal(String::new);
+    let mut expanded_actions = use_signal(|| None::<PresetId>);
     let mut confirming_delete = use_signal(|| None::<PresetId>);
 
     use_effect(move || {
@@ -86,10 +87,19 @@ pub fn PresetsPanel() -> Element {
                 for preset in items {
                     {
                         let rename_id = preset.id.clone();
+                        let rename_name = preset.name.clone();
+                        let actions_id = preset.id.clone();
+                        let update_id = preset.id.clone();
                         let delete_id = preset.id.clone();
                         let recall_id = preset.id.clone();
                         let deleting = confirming_delete.read().as_ref() == Some(&preset.id);
                         let is_editing = editing.read().as_ref() == Some(&preset.id);
+                        let is_expanded = expanded_actions.read().as_ref() == Some(&preset.id);
+                        let actions_label = if is_expanded {
+                            format!("Collapse actions for {}", preset.name)
+                        } else {
+                            format!("Show actions for {}", preset.name)
+                        };
                         rsx! {
                             article { class: "preset-card", key: "{preset.id}",
                                 div { class: "preset-card-heading",
@@ -128,36 +138,84 @@ pub fn PresetsPanel() -> Element {
                                         h3 { "{preset.name}" }
                                         div { class: "preset-actions",
                                             button {
-                                                aria_label: "Rename {preset.name}",
-                                                title: "Rename",
+                                                aria_label: "{actions_label}",
+                                                title: if is_expanded { "Collapse actions" } else { "Show actions" },
                                                 onclick: move |_| {
-                                                    edit_name.set(preset.name.clone());
                                                     confirming_delete.set(None);
-                                                    editing.set(Some(preset.id.clone()));
+                                                    if expanded_actions.peek().as_ref() == Some(&actions_id) {
+                                                        expanded_actions.set(None);
+                                                    } else {
+                                                        expanded_actions.set(Some(actions_id.clone()));
+                                                    }
                                                 },
                                                 "✎"
                                             }
-                                            button {
-                                                class: if deleting { "confirm" } else { "" },
-                                                aria_label: if deleting { "Confirm delete" } else { "Delete preset" },
-                                                title: if deleting { "Click again to confirm" } else { "Delete" },
-                                                onclick: move |_| {
-                                                    if confirming_delete.peek().as_ref() != Some(&delete_id) {
-                                                        confirming_delete.set(Some(delete_id.clone()));
-                                                        return;
-                                                    }
-                                                    let id = delete_id.clone();
-                                                    spawn(async move {
-                                                        match ApiClient::new(state.token).delete_preset(&id).await {
-                                                            Ok(()) => {
-                                                                confirming_delete.set(None);
-                                                                refresh += 1;
+                                            if is_expanded {
+                                                button {
+                                                    class: "btn compact",
+                                                    onclick: move |_| {
+                                                        edit_name.set(rename_name.clone());
+                                                        confirming_delete.set(None);
+                                                        editing.set(Some(rename_id.clone()));
+                                                    },
+                                                    "Rename"
+                                                }
+                                                button {
+                                                    class: "btn compact",
+                                                    onclick: move |_| {
+                                                        let id = update_id.clone();
+                                                        let selector = current_selector(state);
+                                                        spawn(async move {
+                                                            match ApiClient::new(state.token)
+                                                                .recapture_preset(&id, Some(selector))
+                                                                .await
+                                                            {
+                                                                Ok(_) => {
+                                                                    confirming_delete.set(None);
+                                                                    expanded_actions.set(None);
+                                                                    refresh += 1;
+                                                                }
+                                                                Err(error) => handle_error(state, error),
                                                             }
-                                                            Err(error) => handle_error(state, error),
+                                                        });
+                                                    },
+                                                    "Update"
+                                                }
+                                                button {
+                                                    class: if deleting { "btn compact confirm" } else { "btn compact" },
+                                                    aria_label: if deleting { "Confirm delete" } else { "Delete preset" },
+                                                    title: if deleting { "Click again to confirm" } else { "Delete" },
+                                                    onclick: move |_| {
+                                                        if confirming_delete.peek().as_ref() != Some(&delete_id) {
+                                                            confirming_delete.set(Some(delete_id.clone()));
+                                                            return;
+                                                        }
+                                                        let id = delete_id.clone();
+                                                        spawn(async move {
+                                                            match ApiClient::new(state.token).delete_preset(&id).await {
+                                                                Ok(()) => {
+                                                                    confirming_delete.set(None);
+                                                                    expanded_actions.set(None);
+                                                                    refresh += 1;
+                                                                }
+                                                                Err(error) => handle_error(state, error),
+                                                            }
+                                                        });
+                                                    },
+                                                    if deleting { "Delete?" } else { "Delete" }
+                                                }
+                                            }
+                                            button {
+                                                class: "btn primary compact",
+                                                onclick: move |_| {
+                                                    let id = recall_id.clone();
+                                                    spawn(async move {
+                                                        if let Err(error) = ApiClient::new(state.token).recall_preset(&id).await {
+                                                            handle_error(state, error);
                                                         }
                                                     });
                                                 },
-                                                if deleting { "✓" } else { "×" }
+                                                "Activate"
                                             }
                                         }
                                     }
@@ -175,20 +233,6 @@ pub fn PresetsPanel() -> Element {
                                                 }
                                             }
                                         }
-                                    }
-                                }
-                                div { class: "preset-card-footer",
-                                    button {
-                                        class: "btn primary compact",
-                                        onclick: move |_| {
-                                            let id = recall_id.clone();
-                                            spawn(async move {
-                                                if let Err(error) = ApiClient::new(state.token).recall_preset(&id).await {
-                                                    handle_error(state, error);
-                                                }
-                                            });
-                                        },
-                                        "Activate"
                                     }
                                 }
                             }
