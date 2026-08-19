@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    path::PathBuf,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -27,6 +28,7 @@ use tokio::{sync::broadcast::error::TryRecvError, time::Instant};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     limit::RequestBodyLimitLayer,
+    services::ServeDir,
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
@@ -68,6 +70,10 @@ impl ApiState {
 
 /// Builds the daemon HTTP and WebSocket router.
 pub fn router(state: ApiState) -> Router {
+    let web_root = web_root();
+    // SPA deep links must serve index.html with a 200; not_found_service would
+    // force the status to 404, fallback preserves the handler's own status.
+    let static_files = ServeDir::new(&web_root).fallback(any(spa_index));
     let rest = Router::new()
         .route("/scan", post(scan))
         .route("/lights", get(lights))
@@ -106,8 +112,48 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/v1/events", get(events))
         .nest("/api/v1", rest)
         .route("/api/{*path}", any(api_not_found))
-        .fallback(spa)
+        .fallback_service(static_files)
+        .layer(middleware::from_fn(no_cache_index))
         .with_state(state)
+}
+
+/// Serves the SPA entry point for any path that is not a real file.
+async fn spa_index() -> Response {
+    match tokio::fs::read(web_root().join("index.html")).await {
+        Ok(bytes) => (
+            [
+                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
+                (header::CACHE_CONTROL, "no-cache"),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(_) => (StatusCode::NOT_FOUND, "UI bundle not built").into_response(),
+    }
+}
+
+fn web_root() -> PathBuf {
+    std::env::var_os("LUMIERE_WEB_ROOT").map_or_else(
+        || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../dist/web"),
+        PathBuf::from,
+    )
+}
+
+async fn no_cache_index(request: Request<Body>, next: Next) -> Response {
+    let may_serve_static =
+        request.uri().path() != "/healthz" && !request.uri().path().starts_with("/api/");
+    let mut response = next.run(request).await;
+    let is_html = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.starts_with("text/html"));
+    if may_serve_static && is_html && response.status().is_success() {
+        response
+            .headers_mut()
+            .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
+    }
+    response
 }
 
 async fn healthz() -> &'static str {
@@ -423,19 +469,6 @@ async fn api_not_found() -> Response {
         Json(serde_json::json!({"error": "not found"})),
     )
         .into_response()
-}
-
-async fn spa() -> Response {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../dist/web/index.html");
-    match std::fs::read_to_string(path) {
-        Ok(index) => (
-            StatusCode::OK,
-            [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
-            index,
-        )
-            .into_response(),
-        Err(_) => StatusCode::NOT_FOUND.into_response(),
-    }
 }
 
 fn random_hex(length: usize) -> String {
