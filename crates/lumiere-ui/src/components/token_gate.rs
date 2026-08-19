@@ -1,11 +1,20 @@
 use dioxus::prelude::*;
 
-use crate::{platform, state::AppState};
+use crate::{api, platform, state::AppState};
 
 #[component]
 pub fn TokenGate() -> Element {
     let mut token = use_signal(String::new);
     let mut state = use_context::<AppState>();
+
+    // The gate is where every auth failure lands, including after a logout,
+    // so it must notice an open server on its own: the app-level probe only
+    // runs once at page load.
+    use_future(move || async move {
+        if api::server_is_open().await {
+            state.token.set(Some(String::new()));
+        }
+    });
 
     let mut connect = move || {
         let entered = token.read().trim().to_owned();
@@ -43,6 +52,22 @@ pub fn TokenGate() -> Element {
                     "You can also open this page once with "
                     code { "#t=your-token" }
                     ". The fragment is removed after the token is saved."
+                }
+                button {
+                    class: "btn compact tokenless-btn",
+                    r#type: "button",
+                    onclick: move |_| {
+                        spawn(async move {
+                            if api::server_is_open().await {
+                                state.token.set(Some(String::new()));
+                            } else {
+                                state.report_error(
+                                    "The daemon requires a token; start it with --disable-authentication to connect without one",
+                                );
+                            }
+                        });
+                    },
+                    "Connect without a token"
                 }
             }
         }

@@ -214,6 +214,15 @@ impl ApiClient {
     }
 }
 
+/// True when the daemon serves the API without authentication
+/// (--disable-authentication): a tokenless request succeeds.
+pub async fn server_is_open() -> bool {
+    gloo_net::http::Request::get(&format!("{}/api/v1/lights", platform::current_origin()))
+        .send()
+        .await
+        .is_ok_and(|response| response.status() == 200)
+}
+
 async fn decode<T: DeserializeOwned>(response: Response) -> Result<T, ApiError> {
     if response.status() == 401 {
         return Err(ApiError::Auth(AuthError));
