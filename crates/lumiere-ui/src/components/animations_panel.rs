@@ -155,9 +155,6 @@ pub fn AnimationsPanel() -> Element {
                             class: "btn primary play-button",
                             onclick: move |_| {
                                 let id = animation.id.clone();
-                                let mut ids = state.selection.peek().iter().cloned().collect::<Vec<_>>();
-                                ids.sort();
-                                let all = if ids.is_empty() { Selector::All } else { Selector::Ids { ids } };
                                 let options = PlaybackOptions {
                                     speed: speed(),
                                     fps: fps(),
@@ -166,7 +163,7 @@ pub fn AnimationsPanel() -> Element {
                                     ..PlaybackOptions::default()
                                 };
                                 spawn(async move {
-                                    let binding = TargetBinding { all, slots: Vec::new() };
+                                    let binding = TargetBinding { all: Selector::All, slots: Vec::new() };
                                     if let Err(error) = ApiClient::new(state.token)
                                         .play_animation(&id, options, binding)
                                         .await

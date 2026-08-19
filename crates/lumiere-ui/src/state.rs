@@ -14,13 +14,14 @@ pub enum ConnStatus {
     Reconnecting { attempt: u32 },
 }
 
-/// Shared reactive state for the control panel.
+/// Shared reactive state for the web UI.
 #[derive(Clone, Copy)]
 pub struct AppState {
     pub world: Signal<WorldSnapshot>,
     pub conn: Signal<ConnStatus>,
     pub token: Signal<Option<String>>,
     pub selection: Signal<HashSet<LightId>>,
+    pub expanded: Signal<HashSet<LightId>>,
     pub error: Signal<Option<String>>,
 }
 
@@ -35,6 +36,7 @@ impl AppState {
             conn: Signal::new(ConnStatus::Connecting),
             token: Signal::new(token),
             selection: Signal::new(HashSet::new()),
+            expanded: Signal::new(HashSet::new()),
             error: Signal::new(None),
         }
     }
@@ -43,6 +45,7 @@ impl AppState {
         platform::clear_stored_token();
         self.token.set(None);
         self.selection.write().clear();
+        self.expanded.write().clear();
     }
 
     pub fn report_error(mut self, message: impl Into<String>) {
