@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Capabilities, LightId, Mode};
 
+/// WebSocket wire protocol version supported by this crate.
+pub const WS_PROTOCOL_VERSION: u32 = 1;
+
 /// The current connection lifecycle state of a light.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
@@ -82,4 +85,68 @@ pub enum PerLightResult {
 pub enum SkipReason {
     NotConnected,
     UnsupportedMode,
+}
+
+/// A message sent from a WebSocket client to the daemon.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "t", rename_all = "snake_case")]
+pub enum ClientMsg {
+    Hello {
+        protocol_version: u32,
+        ticket: String,
+        last_seq: Option<u64>,
+    },
+    Ping {
+        nonce: u64,
+    },
+}
+
+/// A message sent from the daemon to a WebSocket client.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "t", rename_all = "snake_case")]
+pub enum ServerMsg {
+    Welcome {
+        protocol_version: u32,
+        server_version: String,
+        session: String,
+        seq: u64,
+        snapshot: Option<WorldSnapshot>,
+    },
+    Patch {
+        events: Vec<SeqEvent>,
+    },
+    Resync {
+        snapshot: WorldSnapshot,
+        reason: ResyncReason,
+    },
+    Pong {
+        nonce: u64,
+    },
+    Error {
+        message: String,
+    },
+}
+
+/// Why a connected WebSocket client needs a fresh snapshot.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResyncReason {
+    ClientLagged,
+    SessionChanged,
+    SeqOutOfWindow,
+}
+
+/// Request body for applying a mode to selected lights.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommandRequest {
+    pub selector: crate::Selector,
+    pub mode: Mode,
+    #[serde(default)]
+    pub wait: bool,
+}
+
+/// Results from applying a command to selected lights.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommandResponse {
+    pub results: Vec<PerLightResult>,
 }
