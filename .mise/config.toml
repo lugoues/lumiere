@@ -24,3 +24,4 @@ use_versions_host = true
 rust = "latest"
 "aqua:cli/cli" = "latest"
 "npm:@openai/codex" = "latest"
+"cargo:dioxus-cli" = "latest"
