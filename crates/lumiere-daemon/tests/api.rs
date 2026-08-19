@@ -637,3 +637,63 @@ async fn stale_future_last_seq_gets_a_snapshot() {
     socket.close(None).await.unwrap();
     server.stop().await;
 }
+
+/// --disable-authentication serves every route without a token, including the
+/// WebSocket ticket handshake.
+#[tokio::test]
+async fn disabled_authentication_opens_every_route() {
+    let data = tempfile::tempdir().unwrap();
+    let stored = store::load(data.path()).unwrap();
+    let (store_updates, store_task) = store::spawn(data.path().to_path_buf(), stored.clone());
+    let registry = RegistryHandle::spawn_with_config(
+        SimTransport::new(SimConfig {
+            lights: vec![SimLightSpec {
+                id: LightId::sim("1"),
+                advertised_name: "NEEWER-SL80".to_owned(),
+                rssi: -40,
+                connect_failures: 0,
+            }],
+            write_latency: Duration::ZERO,
+            fail_every_nth_write: None,
+        }),
+        RegistryConfig {
+            labels: stored.labels.clone(),
+            store_updates: Some(store_updates),
+            ..RegistryConfig::default()
+        },
+    );
+    let listener = match tokio::net::TcpListener::bind("127.0.0.1:0").await {
+        Ok(listener) => listener,
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            eprintln!("SKIPPING API TEST: sandbox denies localhost binding");
+            registry.shutdown().await;
+            store_task.await.unwrap().unwrap();
+            return;
+        }
+        Err(error) => panic!("failed to bind test server: {error}"),
+    };
+    let base = format!("http://{}", listener.local_addr().unwrap());
+    let config = Config::for_tests(TOKEN);
+    let app = router(ApiState::new(registry.clone(), &config).without_authentication());
+    let server = tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+
+    let client = Client::new();
+    let response = client
+        .get(format!("{base}/api/v1/lights"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let ticket = client
+        .post(format!("{base}/api/v1/ws-ticket"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(ticket.status(), StatusCode::OK);
+
+    server.abort();
+    registry.shutdown().await;
+    store_task.await.unwrap().unwrap();
+}
