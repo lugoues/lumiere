@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    path::PathBuf,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -29,12 +28,13 @@ use tokio::{sync::broadcast::error::TryRecvError, time::Instant};
 use tower_http::{
     cors::{AllowOrigin, CorsLayer},
     limit::RequestBodyLimitLayer,
-    services::ServeDir,
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
 
 use crate::{RegistryHandle, config::Config};
+
+mod static_assets;
 
 const MAX_BODY_BYTES: usize = 256 * 1024;
 const REST_TIMEOUT: Duration = Duration::from_secs(10);
@@ -71,10 +71,6 @@ impl ApiState {
 
 /// Builds the daemon HTTP and WebSocket router.
 pub fn router(state: ApiState) -> Router {
-    let web_root = web_root();
-    // SPA deep links must serve index.html with a 200; not_found_service would
-    // force the status to 404, fallback preserves the handler's own status.
-    let static_files = ServeDir::new(&web_root).fallback(any(spa_index));
     let rest = Router::new()
         .route("/scan", post(scan))
         .route("/lights", get(lights))
@@ -115,38 +111,18 @@ pub fn router(state: ApiState) -> Router {
         )
     };
 
-    Router::new()
+    let router = Router::new()
         .route("/healthz", get(healthz))
         .route("/api/v1/events", get(events))
         .nest("/api/v1", rest)
         .route("/api/{*path}", any(api_not_found))
-        .fallback_service(static_files)
-        .layer(middleware::from_fn(no_cache_index))
-        .with_state(state)
+        .fallback_service(static_assets::router());
+    #[cfg(not(feature = "embed-ui"))]
+    let router = router.layer(middleware::from_fn(no_cache_index));
+    router.with_state(state)
 }
 
-/// Serves the SPA entry point for any path that is not a real file.
-async fn spa_index() -> Response {
-    match tokio::fs::read(web_root().join("index.html")).await {
-        Ok(bytes) => (
-            [
-                (header::CONTENT_TYPE, "text/html; charset=utf-8"),
-                (header::CACHE_CONTROL, "no-cache"),
-            ],
-            bytes,
-        )
-            .into_response(),
-        Err(_) => (StatusCode::NOT_FOUND, "UI bundle not built").into_response(),
-    }
-}
-
-fn web_root() -> PathBuf {
-    std::env::var_os("LUMIERE_WEB_ROOT").map_or_else(
-        || PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../dist/web"),
-        PathBuf::from,
-    )
-}
-
+#[cfg(not(feature = "embed-ui"))]
 async fn no_cache_index(request: Request<Body>, next: Next) -> Response {
     let may_serve_static =
         request.uri().path() != "/healthz" && !request.uri().path().starts_with("/api/");

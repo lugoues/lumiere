@@ -26,7 +26,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(task) = args.next() else {
         return Err(
-            "usage: cargo xtask <ui [--debug] | convert-anims | dump-schedule FILE>".into(),
+            "usage: cargo xtask <ui [--debug] | dist | convert-anims | dump-schedule FILE>".into(),
         );
     };
     if task == "dump-schedule" {
@@ -39,9 +39,15 @@ fn run() -> Result<(), String> {
         }
         return convert_animations();
     }
+    if task == "dist" {
+        if let Some(extra) = args.next() {
+            return Err(format!("unexpected argument {extra:?}"));
+        }
+        return build_dist();
+    }
     if task != "ui" {
         return Err(format!(
-            "unknown task {task:?}; available tasks: ui, convert-anims"
+            "unknown task {task:?}; available tasks: ui, dist, convert-anims, dump-schedule"
         ));
     }
 
@@ -310,6 +316,104 @@ fn build_and_sync_ui(debug: bool) -> Result<(), String> {
         .map_err(|error| format!("failed to sync UI assets: {error}"))?;
     println!("Synced {} to {}", source.display(), destination.display());
     Ok(())
+}
+
+fn build_dist() -> Result<(), String> {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    build_and_sync_ui(false)?;
+
+    run_command(
+        Command::new("cargo")
+            .args([
+                "build",
+                "--release",
+                "-p",
+                "lumiere-daemon",
+                "--features",
+                "embed-ui",
+            ])
+            .current_dir(&root),
+        "embedded daemon build",
+    )?;
+    run_command(
+        Command::new("cargo")
+            .args(["build", "--release", "-p", "lumiere-cli"])
+            .current_dir(&root),
+        "CLI build",
+    )?;
+
+    let target = host_target()?;
+    let name = format!("lumiere-{}-{target}", env!("CARGO_PKG_VERSION"));
+    let staging = root.join("dist").join(format!(".{name}-staging"));
+    if staging.exists() {
+        fs::remove_dir_all(&staging)
+            .map_err(|error| format!("could not clear {}: {error}", staging.display()))?;
+    }
+    fs::create_dir_all(&staging)
+        .map_err(|error| format!("could not create {}: {error}", staging.display()))?;
+
+    let release = root.join("target/release");
+    copy_dist_file(&release.join("lumiere-daemon"), &staging)?;
+    copy_dist_file(&release.join("lumiere"), &staging)?;
+    copy_dist_file(&root.join("README.md"), &staging)?;
+    let license = root.join("LICENSE");
+    if license.is_file() {
+        copy_dist_file(&license, &staging)?;
+    }
+
+    let artifact = root.join("dist").join(format!("{name}.tar.gz"));
+    run_command(
+        Command::new("tar")
+            .args(["-czf"])
+            .arg(&artifact)
+            .arg("-C")
+            .arg(&staging)
+            .arg(".")
+            .current_dir(&root),
+        "release archive",
+    )?;
+    fs::remove_dir_all(&staging)
+        .map_err(|error| format!("could not remove {}: {error}", staging.display()))?;
+    println!("{}", artifact.display());
+    Ok(())
+}
+
+fn run_command(command: &mut Command, description: &str) -> Result<(), String> {
+    println!("Running {description}");
+    let status = command
+        .status()
+        .map_err(|error| format!("failed to start {description}: {error}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("{description} failed with {status}"))
+    }
+}
+
+fn host_target() -> Result<String, String> {
+    let output = Command::new("rustc")
+        .arg("-vV")
+        .output()
+        .map_err(|error| format!("failed to query rustc host: {error}"))?;
+    if !output.status.success() {
+        return Err(format!("rustc -vV failed with {}", output.status));
+    }
+    let output = String::from_utf8(output.stdout)
+        .map_err(|error| format!("rustc -vV returned invalid UTF-8: {error}"))?;
+    output
+        .lines()
+        .find_map(|line| line.strip_prefix("host: "))
+        .map(str::to_owned)
+        .ok_or_else(|| "rustc -vV did not report a host target".to_owned())
+}
+
+fn copy_dist_file(source: &Path, destination: &Path) -> Result<(), String> {
+    let name = source
+        .file_name()
+        .ok_or_else(|| format!("{} has no file name", source.display()))?;
+    fs::copy(source, destination.join(name))
+        .map(|_| ())
+        .map_err(|error| format!("could not copy {}: {error}", source.display()))
 }
 
 fn sync_directory(source: &Path, destination: &Path) -> io::Result<()> {
