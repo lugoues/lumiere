@@ -10,29 +10,86 @@ enum Tab {
     Hsi,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct DrawerSeed {
-    tab: Tab,
-    cct_temp: i32,
-    cct_bri: i32,
-    hsi_hue: i32,
-    hsi_sat: i32,
-    hsi_bri: i32,
+/// Fields the light is known to hold right now, derived from the newest
+/// snapshot on every render.
+#[derive(Clone, Copy)]
+struct Known {
+    cct_temp: Option<i32>,
+    cct_bri: Option<i32>,
+    hsi_hue: Option<i32>,
+    hsi_sat: Option<i32>,
+    hsi_bri: Option<i32>,
 }
 
+fn known_from_mode(mode: Option<Mode>) -> Known {
+    let mut known = Known {
+        cct_temp: None,
+        cct_bri: None,
+        hsi_hue: None,
+        hsi_sat: None,
+        hsi_bri: None,
+    };
+    match mode {
+        Some(Mode::Cct { temp, bri }) => {
+            known.cct_temp = Some(i32::from(temp.get()));
+            known.cct_bri = Some(i32::from(bri.get()));
+        }
+        Some(Mode::Hsi { hue, sat, bri }) => {
+            known.hsi_hue = Some(i32::from(hue.get()));
+            known.hsi_sat = Some(i32::from(sat.get()));
+            known.hsi_bri = Some(i32::from(bri.get()));
+        }
+        _ => {}
+    }
+    known
+}
+
+/// Per-light control drawer.
+///
+/// Every field the user has NOT touched tracks the live snapshot, so a preset
+/// or another client changing the light updates the sliders, and a later drag
+/// of one slider never resurrects a stale value for the others. Touched
+/// fields belong to the user until the drawer is closed.
 #[component]
 pub fn LightDrawer(light: LightSnapshot) -> Element {
     let state = use_context::<AppState>();
     let cct_min = i32::from(light.caps.cct_min.get());
     let cct_max = i32::from(light.caps.cct_max.get());
     let rgb = light.caps.rgb;
-    let seed = seed_from_mode(light.confirmed.or(light.desired), cct_min, cct_max, rgb);
-    let mut tab = use_signal(|| seed.tab);
-    let mut cct_temp = use_signal(|| seed.cct_temp);
-    let mut cct_bri = use_signal(|| seed.cct_bri);
-    let mut hsi_hue = use_signal(|| seed.hsi_hue);
-    let mut hsi_sat = use_signal(|| seed.hsi_sat);
-    let mut hsi_bri = use_signal(|| seed.hsi_bri);
+    let known = known_from_mode(light.confirmed.or(light.desired));
+
+    let initial_tab = if rgb && known.hsi_hue.is_some() {
+        Tab::Hsi
+    } else {
+        Tab::Cct
+    };
+    let mut tab = use_signal(|| initial_tab);
+    // None = untouched: display and send the live value (or the default).
+    let mut cct_temp = use_signal(|| None::<i32>);
+    let mut cct_bri = use_signal(|| None::<i32>);
+    let mut hsi_hue = use_signal(|| None::<i32>);
+    let mut hsi_sat = use_signal(|| None::<i32>);
+    let mut hsi_bri = use_signal(|| None::<i32>);
+
+    let eff_temp = cct_temp()
+        .or(known.cct_temp)
+        .unwrap_or(5_600)
+        .clamp(cct_min, cct_max);
+    let eff_cct_bri = cct_bri().or(known.cct_bri).unwrap_or(100);
+    let eff_hue = hsi_hue().or(known.hsi_hue).unwrap_or(240);
+    let eff_sat = hsi_sat().or(known.hsi_sat).unwrap_or(100);
+    let eff_hsi_bri = hsi_bri().or(known.hsi_bri).unwrap_or(100);
+
+    let cct_mode = move |temp: i32, bri: i32| Mode::Cct {
+        temp: Kelvin::new(temp.clamp(2_500, 10_000) as u16).expect("clamped to the valid range"),
+        bri: Percent::new(bri.clamp(0, 100) as u8).expect("clamped to the valid range"),
+    };
+    let hsi_mode = move |hue: i32, sat: i32, bri: i32| Mode::Hsi {
+        hue: Hue::new(hue.rem_euclid(360) as u16).expect("wrapped into range"),
+        sat: Percent::new(sat.clamp(0, 100) as u8).expect("clamped to the valid range"),
+        bri: Percent::new(bri.clamp(0, 100) as u8).expect("clamped to the valid range"),
+    };
+
     let cct_id = light.id.clone();
     let cct_bri_id = light.id.clone();
     let hue_id = light.id.clone();
@@ -67,31 +124,25 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         label: "Color temperature",
                         min: cct_min,
                         max: cct_max,
-                        value: cct_temp(),
+                        value: eff_temp,
                         suffix: " K",
                         gradient: "linear-gradient(90deg, #ff9329 0%, #fff4dc 48%, #c9e2ff 100%)",
                         onchange: move |value: i32| {
                             let value = value.clamp(cct_min, cct_max);
-                            cct_temp.set(value);
-                            send_mode(state, cct_id.clone(), Mode::Cct {
-                                temp: Kelvin::new(value as u16).expect("slider is in range"),
-                                bri: Percent::new(cct_bri() as u8).expect("slider is in range"),
-                            });
+                            cct_temp.set(Some(value));
+                            send_mode(state, cct_id.clone(), cct_mode(value, eff_cct_bri));
                         },
                     }
                     GradientSlider {
                         label: "Brightness",
                         min: 0,
                         max: 100,
-                        value: cct_bri(),
+                        value: eff_cct_bri,
                         suffix: "%",
                         gradient: "linear-gradient(90deg, #101018 0%, #ffffff 100%)",
                         onchange: move |value| {
-                            cct_bri.set(value);
-                            send_mode(state, cct_bri_id.clone(), Mode::Cct {
-                                temp: Kelvin::new(cct_temp() as u16).expect("slider is in range"),
-                                bri: Percent::new(value as u8).expect("slider is in range"),
-                            });
+                            cct_bri.set(Some(value));
+                            send_mode(state, cct_bri_id.clone(), cct_mode(eff_temp, value));
                         },
                     }
                     p { class: "range-note", "Range {cct_min} K to {cct_max} K for this light." }
@@ -102,48 +153,36 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         label: "Hue",
                         min: 0,
                         max: 359,
-                        value: hsi_hue(),
+                        value: eff_hue,
                         suffix: "°",
                         gradient: "linear-gradient(90deg, #f33 0%, #ff3 17%, #3f3 33%, #3ff 50%, #33f 67%, #f3f 83%, #f33 100%)",
                         onchange: move |value| {
-                            hsi_hue.set(value);
-                            send_mode(state, hue_id.clone(), Mode::Hsi {
-                                hue: Hue::new(value as u16).expect("slider is in range"),
-                                sat: Percent::new(hsi_sat() as u8).expect("slider is in range"),
-                                bri: Percent::new(hsi_bri() as u8).expect("slider is in range"),
-                            });
+                            hsi_hue.set(Some(value));
+                            send_mode(state, hue_id.clone(), hsi_mode(value, eff_sat, eff_hsi_bri));
                         },
                     }
                     GradientSlider {
                         label: "Saturation",
                         min: 0,
                         max: 100,
-                        value: hsi_sat(),
+                        value: eff_sat,
                         suffix: "%",
                         gradient: "linear-gradient(90deg, #ffffff 0%, #ef4444 100%)",
                         onchange: move |value| {
-                            hsi_sat.set(value);
-                            send_mode(state, sat_id.clone(), Mode::Hsi {
-                                hue: Hue::new(hsi_hue() as u16).expect("slider is in range"),
-                                sat: Percent::new(value as u8).expect("slider is in range"),
-                                bri: Percent::new(hsi_bri() as u8).expect("slider is in range"),
-                            });
+                            hsi_sat.set(Some(value));
+                            send_mode(state, sat_id.clone(), hsi_mode(eff_hue, value, eff_hsi_bri));
                         },
                     }
                     GradientSlider {
                         label: "Brightness",
                         min: 0,
                         max: 100,
-                        value: hsi_bri(),
+                        value: eff_hsi_bri,
                         suffix: "%",
                         gradient: "linear-gradient(90deg, #101018 0%, #ffffff 100%)",
                         onchange: move |value| {
-                            hsi_bri.set(value);
-                            send_mode(state, hsi_bri_id.clone(), Mode::Hsi {
-                                hue: Hue::new(hsi_hue() as u16).expect("slider is in range"),
-                                sat: Percent::new(hsi_sat() as u8).expect("slider is in range"),
-                                bri: Percent::new(value as u8).expect("slider is in range"),
-                            });
+                            hsi_bri.set(Some(value));
+                            send_mode(state, hsi_bri_id.clone(), hsi_mode(eff_hue, eff_sat, value));
                         },
                     }
                 }
@@ -166,76 +205,21 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
     }
 }
 
-fn seed_from_mode(mode: Option<Mode>, cct_min: i32, cct_max: i32, rgb: bool) -> DrawerSeed {
-    let mut seed = DrawerSeed {
-        tab: Tab::Cct,
-        cct_temp: 5_600_i32.clamp(cct_min, cct_max),
-        cct_bri: 100,
-        hsi_hue: 240,
-        hsi_sat: 100,
-        hsi_bri: 100,
-    };
-    match mode {
-        Some(Mode::Cct { temp, bri }) => {
-            seed.cct_temp = i32::from(temp.get()).clamp(cct_min, cct_max);
-            seed.cct_bri = i32::from(bri.get());
-        }
-        Some(Mode::Hsi { hue, sat, bri }) if rgb => {
-            seed.tab = Tab::Hsi;
-            seed.hsi_hue = i32::from(hue.get());
-            seed.hsi_sat = i32::from(sat.get());
-            seed.hsi_bri = i32::from(bri.get());
-        }
-        _ => {}
-    }
-    seed
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn seeds_defaults_and_clamps_temperature() {
-        assert_eq!(
-            seed_from_mode(None, 6_000, 8_000, true),
-            DrawerSeed {
-                tab: Tab::Cct,
-                cct_temp: 6_000,
-                cct_bri: 100,
-                hsi_hue: 240,
-                hsi_sat: 100,
-                hsi_bri: 100,
-            }
-        );
-    }
+    fn known_fields_follow_the_mode() {
+        let cct = known_from_mode(Some(Mode::Cct {
+            temp: Kelvin::new(4200).unwrap(),
+            bri: Percent::new(20).unwrap(),
+        }));
+        assert_eq!(cct.cct_temp, Some(4200));
+        assert_eq!(cct.cct_bri, Some(20));
+        assert_eq!(cct.hsi_hue, None);
 
-    #[test]
-    fn seeds_cct_and_hsi_modes() {
-        let cct = seed_from_mode(
-            Some(Mode::Cct {
-                temp: Kelvin::new(4_500).unwrap(),
-                bri: Percent::new(65).unwrap(),
-            }),
-            3_200,
-            6_500,
-            true,
-        );
-        assert_eq!((cct.tab, cct.cct_temp, cct.cct_bri), (Tab::Cct, 4_500, 65));
-
-        let hsi = seed_from_mode(
-            Some(Mode::Hsi {
-                hue: Hue::new(120).unwrap(),
-                sat: Percent::new(70).unwrap(),
-                bri: Percent::new(45).unwrap(),
-            }),
-            3_200,
-            6_500,
-            true,
-        );
-        assert_eq!(
-            (hsi.tab, hsi.hsi_hue, hsi.hsi_sat, hsi.hsi_bri),
-            (Tab::Hsi, 120, 70, 45)
-        );
+        let none = known_from_mode(Some(Mode::On));
+        assert_eq!(none.cct_temp, None);
     }
 }
