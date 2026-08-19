@@ -44,6 +44,9 @@ pub(crate) struct LightActor {
     /// Used to drop duplicate desired-watch echoes; cleared on every (re)connect
     /// so a fresh link always gets a full rewrite.
     last_written: Option<Mode>,
+    /// True after this actor wrote Mode::Off. Mode writes do not wake a Neewer
+    /// light, so color and temperature commands prepend a power-on while set.
+    power_known_off: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -92,6 +95,7 @@ impl LightActor {
             ops_open: true,
             retry: None,
             last_written: None,
+            power_known_off: false,
         }
     }
 
@@ -279,6 +283,18 @@ impl LightActor {
         };
         let (applied, clamped) = clamp_to_device(requested_for_device, &self.caps);
         let adapted = converted || clamped;
+        if self.power_known_off && !matches!(applied, Mode::Off) {
+            for packet in encode(Mode::On, &self.caps) {
+                if let Err(error) = self.write_packet(packet.as_bytes()).await {
+                    self.last_written = None;
+                    return PerLightResult::Failed {
+                        id: self.id.clone(),
+                        error,
+                    };
+                }
+            }
+            self.power_known_off = false;
+        }
         for packet in encode(applied, &self.caps) {
             if let Err(error) = self.write_packet(packet.as_bytes()).await {
                 self.last_written = None;
@@ -290,6 +306,7 @@ impl LightActor {
         }
 
         self.last_written = Some(requested);
+        self.power_known_off = matches!(applied, Mode::Off);
         if adapted {
             PerLightResult::Adapted {
                 id: self.id.clone(),
