@@ -94,6 +94,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/presets", get(presets).post(capture_preset))
         .route("/presets/{id}", patch(rename_preset).delete(delete_preset))
         .route("/presets/{id}/recall", post(recall_preset))
+        .route("/presets/{id}/capture", post(recapture_preset))
         .route("/ws-ticket", post(ws_ticket))
         .fallback(api_not_found)
         .layer(middleware::from_fn_with_state(state.clone(), authorize))
@@ -339,6 +340,29 @@ async fn recall_preset(
         .await
         .map_err(ApiError::registry)?;
     Ok(Json(CommandResponse { results }))
+}
+
+#[derive(Deserialize)]
+struct RecapturePresetRequest {
+    #[serde(default)]
+    selector: Option<Selector>,
+}
+
+/// Overwrites a preset's entries with a fresh capture, keeping name and id.
+async fn recapture_preset(
+    State(state): State<ApiState>,
+    Path(id): Path<String>,
+    Json(request): Json<RecapturePresetRequest>,
+) -> Result<Json<Preset>, ApiError> {
+    let id = parse_preset_id(&id)?;
+    require_preset(&state, &id).await?;
+    let selector = request.selector.unwrap_or(Selector::All);
+    let preset = state
+        .registry
+        .recapture_preset(id, selector)
+        .await
+        .map_err(ApiError::registry)?;
+    Ok(Json(preset))
 }
 
 #[derive(Deserialize)]

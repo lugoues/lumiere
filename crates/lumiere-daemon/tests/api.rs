@@ -45,7 +45,7 @@ async fn spawn_test_server(store_dir: Option<PathBuf>) -> Option<TestServer> {
     let registry = RegistryHandle::spawn_with_config(
         sim.clone(),
         RegistryConfig {
-            labels: stored.labels,
+            saved: stored.lights.clone(),
             presets: stored.presets,
             store_updates: Some(store_updates),
             animations_dir: Some(
@@ -313,7 +313,10 @@ async fn labels_are_persisted_and_restored() {
     .unwrap();
     let persisted = store::load(&dir).unwrap();
     assert_eq!(
-        persisted.labels.get(&LightId::sim("1")).map(String::as_str),
+        persisted
+            .lights
+            .get(&LightId::sim("1"))
+            .and_then(|saved| saved.label.as_deref()),
         Some("Key")
     );
     first.stop().await;
@@ -657,7 +660,7 @@ async fn disabled_authentication_opens_every_route() {
             fail_every_nth_write: None,
         }),
         RegistryConfig {
-            labels: stored.labels.clone(),
+            saved: stored.lights.clone(),
             store_updates: Some(store_updates),
             ..RegistryConfig::default()
         },
@@ -696,4 +699,75 @@ async fn disabled_authentication_opens_every_route() {
     server.abort();
     registry.shutdown().await;
     store_task.await.unwrap().unwrap();
+}
+
+/// A restart must remember each light's last confirmed mode so preset capture
+/// works before any command is sent in the new session.
+#[tokio::test]
+async fn remembered_modes_survive_restart_and_capture() {
+    let shared = tempfile::tempdir().unwrap();
+    let dir = shared.path().to_path_buf();
+    let Some(first) = spawn_test_server(Some(dir.clone())).await else {
+        return;
+    };
+    let client = Client::new();
+    scan_and_wait(&client, &first).await;
+    let response = client
+        .post(format!("{}/api/v1/command", first.base))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({
+            "selector": {"kind": "all"},
+            "mode": {"mode": "cct", "temp": 4400, "bri": 33},
+            "wait": true
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    tokio::time::sleep(Duration::from_millis(800)).await; // store debounce
+    first.stop().await;
+
+    let Some(second) = spawn_test_server(Some(dir)).await else {
+        return;
+    };
+    scan_and_wait(&client, &second).await;
+    // No command this session; capture must still succeed from remembered modes.
+    let response = client
+        .post(format!("{}/api/v1/presets", second.base))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({"name": "Remembered", "selector": {"kind": "all"}}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let preset = response.json::<lumiere_proto::Preset>().await.unwrap();
+    assert_eq!(preset.entries.len(), 4);
+
+    // Overwrite it via recapture after changing one light.
+    client
+        .post(format!("{}/api/v1/command", second.base))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({
+            "selector": {"kind": "ids", "ids": ["sim:1"]},
+            "mode": {"mode": "cct", "temp": 4800, "bri": 90},
+            "wait": true
+        }))
+        .send()
+        .await
+        .unwrap();
+    let response = client
+        .post(format!("{}/api/v1/presets/remembered/capture", second.base))
+        .bearer_auth(TOKEN)
+        .json(&serde_json::json!({}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let updated = response.json::<lumiere_proto::Preset>().await.unwrap();
+    assert_eq!(updated.id, preset.id);
+    assert!(updated.entries.iter().any(|entry| matches!(
+        entry.mode,
+        lumiere_proto::Mode::Cct { temp, bri } if temp.get() == 4800 && bri.get() == 90
+    )));
+    second.stop().await;
 }

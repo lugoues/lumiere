@@ -38,7 +38,7 @@ const GLOBAL_WRITE_PERMITS: usize = 4;
 pub struct RegistryConfig {
     pub min_write_interval: Duration,
     pub connect_timeout: Duration,
-    pub labels: HashMap<LightId, String>,
+    pub saved: HashMap<LightId, crate::store::SavedLight>,
     pub store_updates: Option<mpsc::Sender<StoreUpdate>>,
     pub animations_dir: Option<PathBuf>,
     pub presets: Vec<Preset>,
@@ -49,7 +49,7 @@ impl Default for RegistryConfig {
         Self {
             min_write_interval: Duration::from_millis(50),
             connect_timeout: Duration::from_secs(10),
-            labels: HashMap::new(),
+            saved: HashMap::new(),
             store_updates: None,
             animations_dir: None,
             presets: Vec::new(),
@@ -99,6 +99,11 @@ pub enum RegistryCmd {
     },
     ListPresets {
         reply: oneshot::Sender<Vec<Preset>>,
+    },
+    RecapturePreset {
+        id: PresetId,
+        selector: Selector,
+        reply: oneshot::Sender<Result<Preset, String>>,
     },
     SavePreset {
         name: String,
@@ -381,6 +386,26 @@ impl RegistryHandle {
             .map_err(|_| "registry stopped before replying".to_owned())?
     }
 
+    /// Replaces a preset's entries with a fresh capture of the selection.
+    pub async fn recapture_preset(
+        &self,
+        id: PresetId,
+        selector: Selector,
+    ) -> Result<Preset, String> {
+        let (reply, result) = oneshot::channel();
+        self.cmd_tx
+            .send(RegistryCmd::RecapturePreset {
+                id,
+                selector,
+                reply,
+            })
+            .await
+            .map_err(|_| "registry is stopped".to_owned())?;
+        result
+            .await
+            .map_err(|_| "registry stopped before replying".to_owned())?
+    }
+
     /// Recalls a preset, optionally waiting for per-light results.
     pub async fn recall_preset(
         &self,
@@ -577,7 +602,7 @@ impl Registry {
                     return;
                 };
                 self.lights[index].snapshot.label.clone_from(&label);
-                self.config.labels.insert(id.clone(), label.clone());
+                self.config.saved.entry(id.clone()).or_default().label = Some(label.clone());
                 self.emit(index);
                 if let Some(store_updates) = &self.config.store_updates {
                     let _ = store_updates.send(StoreUpdate::Label { id, label }).await;
@@ -627,6 +652,14 @@ impl Registry {
                 let result = self.save_preset(name, selector).await;
                 let _ = reply.send(result);
             }
+            RegistryCmd::RecapturePreset {
+                id,
+                selector,
+                reply,
+            } => {
+                let result = self.recapture_preset(&id, selector).await;
+                let _ = reply.send(result);
+            }
             RegistryCmd::RecallPreset { id, wait, reply } => {
                 self.recall_preset(id, wait, reply).await;
             }
@@ -642,13 +675,9 @@ impl Registry {
         }
     }
 
-    async fn save_preset(&mut self, name: String, selector: Selector) -> Result<Preset, String> {
-        let name = name.trim().to_owned();
-        if name.is_empty() {
-            return Err("preset name may not be empty".to_owned());
-        }
+    fn capture_entries(&self, selector: &Selector) -> Result<Vec<PresetEntry>, String> {
         let entries = self
-            .target_indices(&selector)
+            .target_indices(selector)
             .into_iter()
             .filter_map(|index| {
                 let light = &self.lights[index].snapshot;
@@ -667,6 +696,32 @@ impl Registry {
         if entries.is_empty() {
             return Err("no connected light modes could be captured".to_owned());
         }
+        Ok(entries)
+    }
+
+    /// Replaces an existing preset's entries with a fresh capture, keeping
+    /// its name and identifier.
+    async fn recapture_preset(
+        &mut self,
+        id: &PresetId,
+        selector: Selector,
+    ) -> Result<Preset, String> {
+        let entries = self.capture_entries(&selector)?;
+        let Some(preset) = self.presets.iter_mut().find(|preset| &preset.id == id) else {
+            return Err(format!("preset {id} was not found"));
+        };
+        preset.entries = entries;
+        let updated = preset.clone();
+        self.persist_presets().await;
+        Ok(updated)
+    }
+
+    async fn save_preset(&mut self, name: String, selector: Selector) -> Result<Preset, String> {
+        let name = name.trim().to_owned();
+        if name.is_empty() {
+            return Err("preset name may not be empty".to_owned());
+        }
+        let entries = self.capture_entries(&selector)?;
 
         let base = preset_slug(&name);
         let mut candidate = base.clone();
@@ -1120,12 +1175,14 @@ impl Registry {
 
         let model = discovered.name.unwrap_or_else(|| discovered.id.to_string());
         let caps = ModelTable::builtin().resolve(&model);
-        let label = self
-            .config
-            .labels
-            .get(&discovered.id)
-            .cloned()
+        let saved = self.config.saved.get(&discovered.id);
+        let label = saved
+            .and_then(|saved| saved.label.clone())
             .unwrap_or_else(|| model.clone());
+        // Neewer lights keep their settings across disconnects, so the last
+        // confirmed mode is the best estimate of what the light shows now.
+        // Seeding it makes preset capture work before any command this session.
+        let remembered = saved.and_then(|saved| saved.mode);
         let snapshot = LightSnapshot {
             id: discovered.id.clone(),
             model: model.clone(),
@@ -1134,8 +1191,8 @@ impl Registry {
             conn: ConnState::Discovered,
             rssi: discovered.rssi,
             desired: None,
-            confirmed: None,
-            power: None,
+            confirmed: remembered,
+            power: remembered.map(|mode| !matches!(mode, Mode::Off)),
             last_error: None,
         };
         let (desired_tx, desired_rx) = watch::channel(None);
@@ -1170,16 +1227,19 @@ impl Registry {
             return;
         };
         let snapshot = &mut self.lights[index].snapshot;
+        let mut remember = None;
         match result {
             PerLightResult::Applied { mode, .. } => {
                 snapshot.confirmed = Some(*mode);
                 update_power(snapshot, *mode);
                 snapshot.last_error = None;
+                remember = Some(*mode);
             }
             PerLightResult::Adapted { applied, .. } => {
                 snapshot.confirmed = Some(*applied);
                 update_power(snapshot, *applied);
                 snapshot.last_error = None;
+                remember = Some(*applied);
             }
             PerLightResult::Coalesced { .. } => {}
             PerLightResult::Skipped { reason, .. } => {
@@ -1195,7 +1255,27 @@ impl Registry {
                 snapshot.last_error = Some(error.clone());
             }
         }
+        if let Some(mode) = remember {
+            self.remember_mode(id.clone(), mode);
+        }
         self.emit(index);
+    }
+
+    /// Persists a confirmed mode so the light's state survives restarts.
+    /// Skipped while an animation plays: frames arrive several times a second
+    /// and the final state lands after playback clears.
+    fn remember_mode(&mut self, id: LightId, mode: Mode) {
+        if self.active.is_some() {
+            return;
+        }
+        let saved = self.config.saved.entry(id.clone()).or_default();
+        if saved.mode == Some(mode) {
+            return;
+        }
+        saved.mode = Some(mode);
+        if let Some(store_updates) = &self.config.store_updates {
+            let _ = store_updates.try_send(StoreUpdate::Mode { id, mode });
+        }
     }
 
     fn index_of(&self, id: &LightId) -> Option<usize> {

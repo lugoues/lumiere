@@ -97,7 +97,7 @@ where
     let registry = RegistryHandle::spawn_with_config(
         transport,
         RegistryConfig {
-            labels: stored.labels,
+            saved: stored.lights.clone(),
             presets: stored.presets,
             store_updates: Some(store_updates),
             animations_dir: Some(animations_dir),
