@@ -30,3 +30,9 @@ directories = "6"
 rand = "0.9"
 subtle = "2"
 tempfile = "3"
+
+# Strips DWARF from release binaries. Precompiled std ships debug info that
+# reaches the wasm and crashes dx's bundled wasm-opt (binaryen DWARFEmitter
+# abort); stripping at link time removes it before wasm-opt ever runs.
+[profile.release]
+strip = "debuginfo"
