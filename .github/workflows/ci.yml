@@ -16,7 +16,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown, x86_64-pc-windows-msvc
       - uses: Swatinem/rust-cache@v2
       - name: Format
         run: cargo fmt --all --check
@@ -26,6 +26,8 @@ jobs:
         run: cargo test --workspace
       - name: Proto stays wasm-compatible
         run: cargo check -p lumiere-proto --target wasm32-unknown-unknown
+      - name: Windows target stays compiling
+        run: cargo check --target x86_64-pc-windows-msvc -p lumiere-daemon -p lumiere-cli --features lumiere-daemon/embed-ui
       - name: Proto stays dependency-light
         run: |
           # lumiere-proto must never grow OS-facing deps; it is shared with the WASM UI.
