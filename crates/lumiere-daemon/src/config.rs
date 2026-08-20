@@ -6,7 +6,6 @@ use std::{
 };
 
 use directories::ProjectDirs;
-use rand::{TryRngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -38,7 +37,7 @@ impl Config {
         }
 
         let mut token = [0_u8; 32];
-        OsRng.try_fill_bytes(&mut token)?;
+        getrandom::fill(&mut token)?;
         let config = Self {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9091),
             token: base64url(&token),
@@ -89,7 +88,7 @@ pub enum ConfigError {
     #[error(transparent)]
     Encode(#[from] toml::ser::Error),
     #[error("operating-system random generator failed: {0}")]
-    Random(#[from] rand::rand_core::OsError),
+    Random(#[from] getrandom::Error),
 }
 
 fn config_dir() -> Result<PathBuf, ConfigError> {
