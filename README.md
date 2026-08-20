@@ -7,9 +7,9 @@ Lumière is a daemon and browser UI for controlling Neewer lights over Bluetooth
 On macOS, a future personal Homebrew tap can be installed with these placeholders:
 
 ```sh
-brew tap OWNER/TAP
-brew install OWNER/TAP/lumiere
-brew services start lumiere
+brew tap lugoues/tap
+brew install lugoues/tap/lumiere
+brew services start lumiere   # no sudo: Bluetooth needs a user LaunchAgent
 ```
 
 To build a release archive from source, install the tools configured by `mise`, then run:

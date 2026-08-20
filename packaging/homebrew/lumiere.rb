@@ -3,7 +3,7 @@
 class Lumiere < Formula
   desc "Daemon and web UI for controlling Neewer BLE lights"
   homepage "https://github.com/lugoues/lumiere"
-  url "https://github.com/lugoues/lumiere/releases/download/vVERSION/lumiere-vVERSION-aarch64-apple-darwin.tar.gz"
+  url "https://github.com/lugoues/lumiere/releases/download/vVERSION/lumiere-VERSION-aarch64-apple-darwin.tar.gz"
   sha256 "SHA256"
   version "VERSION"
 
