@@ -142,24 +142,23 @@ where
     Ok(())
 }
 
+/// The animation library ships inside the binary: an installed daemon has no
+/// source checkout to copy from.
+#[derive(rust_embed::RustEmbed)]
+#[folder = "$CARGO_MANIFEST_DIR/../../assets/animations/"]
+#[include = "*.json"]
+struct ShippedAnimations;
+
 fn seed_animations(destination: &Path) -> Result<(), Box<dyn Error>> {
-    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/animations");
     fs::create_dir_all(destination)?;
-    // Shipped animations are defaults: copy missing files, preserving every
-    // local file so future user edits are never overwritten on startup.
-    for entry in fs::read_dir(source)? {
-        let entry = entry?;
-        if !entry.file_type()?.is_file()
-            || entry
-                .path()
-                .extension()
-                .is_none_or(|extension| extension != "json")
+    // Shipped animations are defaults: write missing files, preserving every
+    // local file so user edits are never overwritten on startup.
+    for name in ShippedAnimations::iter() {
+        let output = destination.join(name.as_ref());
+        if !output.exists()
+            && let Some(file) = ShippedAnimations::get(&name)
         {
-            continue;
-        }
-        let output = destination.join(entry.file_name());
-        if !output.exists() {
-            fs::copy(entry.path(), output)?;
+            fs::write(output, file.data)?;
         }
     }
     Ok(())
