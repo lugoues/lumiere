@@ -49,6 +49,21 @@ Lumière follows the operating system's standard per-user directories:
 
 Set `LUMIERE_CONFIG_DIR` or `LUMIERE_DATA_DIR` to override those directories. The data directory contains light labels, presets, and animations. Development builds serve the UI from `dist/web`; `LUMIERE_WEB_ROOT` overrides that path when the `embed-ui` feature is off.
 
+## Testers wanted
+
+Lumière is developed against two NEEWER-GL1 PRO lights on macOS and Linux.
+Reports from other setups are what harden it:
+
+- **Windows**: the code compiles and ships for `x86_64-pc-windows-msvc`, but no
+  one has run the Bluetooth path on real Windows hardware yet. If you have a
+  Windows machine with a BLE adapter, run `lumiere probe scan`, `probe blink
+  <name>`, and `probe bench <name>` and open an issue with the output, working
+  or not.
+- **Other Neewer models**: the capability table covers 43 models but most are
+  untested against real hardware. If a light shows the wrong temperature range,
+  refuses color, or misbehaves in animations, open an issue with the light's
+  advertised name from `lumiere probe scan`.
+
 ## Development
 
 - `cargo xtask ui [--debug]` builds the Dioxus web UI and synchronizes it to `dist/web`.

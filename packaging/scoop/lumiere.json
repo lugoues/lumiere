@@ -1,0 +1,13 @@
+{
+    "version": "VERSION",
+    "description": "Daemon and web UI for controlling Neewer BLE lights",
+    "homepage": "https://github.com/lugoues/lumiere",
+    "license": "MIT",
+    "url": "https://github.com/lugoues/lumiere/releases/download/vVERSION/lumiere-VERSION-x86_64-pc-windows-msvc.zip",
+    "hash": "SHA256",
+    "bin": [
+        "lumiere-daemon.exe",
+        "lumiere.exe"
+    ],
+    "notes": "Run lumiere-daemon once and open the printed bootstrap URL. Requires Windows 10 1709+ with a Bluetooth LE adapter."
+}
