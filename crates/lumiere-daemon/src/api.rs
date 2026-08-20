@@ -21,7 +21,6 @@ use lumiere_proto::{
     PlaybackOptions, PlaybackStatus, Preset, PresetId, ResyncReason, Selector, ServerMsg,
     TargetBinding, WS_PROTOCOL_VERSION, WorldSnapshot,
 };
-use rand::{TryRngCore, rngs::OsRng};
 use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 use tokio::{sync::broadcast::error::TryRecvError, time::Instant};
@@ -665,9 +664,7 @@ async fn api_not_found() -> Response {
 
 fn random_hex(length: usize) -> String {
     let mut bytes = vec![0_u8; length];
-    OsRng
-        .try_fill_bytes(&mut bytes)
-        .expect("operating-system random generator failed");
+    getrandom::fill(&mut bytes).expect("operating-system random generator failed");
     let mut encoded = String::with_capacity(length * 2);
     for byte in bytes {
         use std::fmt::Write as _;
