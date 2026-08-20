@@ -8,7 +8,7 @@ repository.workspace = true
 
 [features]
 default = []
-embed-ui = ["dep:rust-embed"]
+embed-ui = []
 
 [dependencies]
 lumiere-proto.workspace = true
@@ -29,7 +29,7 @@ serde_json.workspace = true
 toml.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
-rust-embed = { version = "8", features = ["debug-embed", "interpolate-folder-path", "mime-guess"], optional = true }
+rust-embed = { version = "8", features = ["debug-embed", "interpolate-folder-path", "mime-guess", "include-exclude"] }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
