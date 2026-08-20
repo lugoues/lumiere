@@ -38,6 +38,8 @@ Options:
                      Serve the API without bearer-token checks for this run.
                      Anyone who can reach the port controls the lights; meant
                      for trusted networks like a tailnet or loopback.
+                     Set disable_authentication = true in the config file to
+                     make it permanent (e.g. for the brew service).
   -h, --help         Show this help
 
 The persistent listen address, auth token, and CORS origins live in the config
@@ -108,9 +110,16 @@ where
 
     let listener = tokio::net::TcpListener::bind(config.bind).await?;
     let bound = listener.local_addr()?;
+    let flag = disable_authentication;
+    let disable_authentication = flag || config.disable_authentication;
     let state = if disable_authentication {
+        let source = if flag {
+            "--disable-authentication"
+        } else {
+            "disable_authentication in config.toml"
+        };
         tracing::warn!("authentication is DISABLED: anyone reaching this port controls the lights");
-        println!("Authentication: DISABLED (--disable-authentication)");
+        println!("Authentication: DISABLED ({source})");
         println!("Open: http://{bound}/");
         ApiState::new(registry.clone(), &config).without_authentication()
     } else {
