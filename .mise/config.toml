@@ -23,6 +23,7 @@ rust = "latest"
 "aqua:cli/cli" = "latest"
 "npm:@openai/codex" = "latest"
 "cargo:dioxus-cli" = "latest"
+"cargo:cargo-deb" = "latest"
 
 [tasks.build]
 description = "Build the daemon and CLI (debug)"
@@ -36,6 +37,11 @@ run = "cargo xtask ui"
 description = "Build everything and run the daemon on localhost:9091 (extra args pass through, e.g. mise run lumi -- --sim)"
 depends = ["build", "build-ui"]
 run = "./target/debug/lumiere-daemon --bind 127.0.0.1:9091"
+
+[tasks.deb]
+description = "Build the Debian package with the systemd unit"
+depends = ["build-ui"]
+run = "cargo deb -p lumiere-daemon"
 
 [tasks.dist]
 description = "Release archive: optimized UI embedded in a release daemon"

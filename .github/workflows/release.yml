@@ -56,6 +56,8 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: cargo-bins/cargo-binstall@e00d2c94cc0067b77737821097a62d91c0301baa # v1.21.1
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: web-bundle
@@ -66,6 +68,11 @@ jobs:
         run: |
           cargo build --release --target "${{ matrix.target }}" --features embed-ui -p lumiere-daemon
           cargo build --release --target "${{ matrix.target }}" -p lumiere-cli
+      - name: Build Debian package
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          cargo binstall --no-confirm cargo-deb
+          cargo deb -p lumiere-daemon --no-build --target "${{ matrix.target }}" --output .
       - name: Package binaries
         shell: bash
         run: |
@@ -84,6 +91,7 @@ jobs:
           path: |
             lumiere-*.tar.gz
             lumiere-*.zip
+            lumiere*.deb
 
   release:
     needs: build
@@ -102,6 +110,7 @@ jobs:
           subject-path: |
             release-artifacts/*.tar.gz
             release-artifacts/*.zip
+            release-artifacts/*.deb
       - name: Render Homebrew formula
         run: |
           version="${GITHUB_REF_NAME#v}"
@@ -123,6 +132,7 @@ jobs:
           files: |
             release-artifacts/*.tar.gz
             release-artifacts/*.zip
+            release-artifacts/*.deb
             release-artifacts/lumiere.rb
             release-artifacts/lumiere.json
       # Pushes the rendered formula into the tap. Needs the TAP_GITHUB_TOKEN

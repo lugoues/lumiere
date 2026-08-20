@@ -28,6 +28,21 @@ The daemon prints its API token and a bootstrap URL such as `http://127.0.0.1:90
 
 **On macOS, always use `brew services start lumiere` without `sudo`. Bluetooth TCC permissions require a user LaunchAgent. Using sudo creates a LaunchDaemon, which macOS does not grant Bluetooth access.**
 
+## Linux install (deb)
+
+Grab `lumiere_<version>_amd64.deb` from the release and:
+
+```sh
+sudo apt install ./lumiere_1.0.0-1_amd64.deb
+sudo systemctl status lumiere    # enabled and started on install
+sudo journalctl -u lumiere       # the API token is printed here on first start
+```
+
+The service runs as a systemd DynamicUser with state in `/var/lib/lumiere`
+and joins the `bluetooth` group for BlueZ access. Set the bind address or
+`disable_authentication` in `/var/lib/lumiere/config/config.toml`, then
+`sudo systemctl restart lumiere`.
+
 ## Verifying releases
 
 Every release artifact carries keyless sigstore provenance signed by the

@@ -35,3 +35,28 @@ rust-embed = { version = "8", features = ["debug-embed", "interpolate-folder-pat
 tokio = { workspace = true, features = ["test-util"] }
 tokio-tungstenite = "0.30"
 reqwest = { version = "0.13", features = ["json"] }
+
+# Debian packaging: cargo deb -p lumiere-daemon (needs dist/web built first;
+# use: mise run deb). The unit runs under a systemd DynamicUser with state in
+# /var/lib/lumiere; the API token appears in the journal on first start.
+[package.metadata.deb]
+name = "lumiere"
+maintainer = "Peter Brunner <peter@lugoues.net>"
+copyright = "Peter Brunner"
+extended-description = "Daemon and embedded web UI for controlling Neewer BLE lights, with presets and a 101-animation library. The lumiere CLI provides scan/blink/bench hardware probes."
+section = "utils"
+priority = "optional"
+depends = "$auto, bluez"
+features = ["embed-ui"]
+assets = [
+    ["target/release/lumiere-daemon", "usr/bin/", "755"],
+    ["target/release/lumiere", "usr/bin/", "755"],
+    ["../../README.md", "usr/share/doc/lumiere/README.md", "644"],
+]
+maintainer-scripts = "../../packaging/deb/maintainer-scripts"
+
+[package.metadata.deb.systemd-units]
+unit-scripts = "../../packaging/deb"
+unit-name = "lumiere"
+enable = true
+start = true

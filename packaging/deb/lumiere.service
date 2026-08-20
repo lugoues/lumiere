@@ -1,0 +1,33 @@
+[Unit]
+Description=Lumière Neewer light daemon
+Documentation=https://github.com/lugoues/lumiere
+After=bluetooth.target network.target
+Wants=bluetooth.target
+
+[Service]
+ExecStart=/usr/bin/lumiere-daemon
+Restart=on-failure
+RestartSec=2
+
+# No fixed system user: systemd allocates one and owns /var/lib/lumiere.
+DynamicUser=yes
+StateDirectory=lumiere
+Environment=LUMIERE_CONFIG_DIR=/var/lib/lumiere/config
+Environment=LUMIERE_DATA_DIR=/var/lib/lumiere/data
+
+# Debian's D-Bus policy grants org.bluez access to the bluetooth group.
+SupplementaryGroups=bluetooth
+
+# Hardening: the daemon needs the network, D-Bus for BlueZ, and its state dir.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target
