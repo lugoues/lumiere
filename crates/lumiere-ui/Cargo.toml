@@ -10,8 +10,8 @@ repository.workspace = true
 lumiere-proto.workspace = true
 dioxus = { version = "0.7.10", features = ["web"] }
 futures.workspace = true
-gloo-net = { version = "0.6", features = ["http", "json", "websocket"] }
-gloo-timers = { version = "0.3", features = ["futures"] }
+gloo-net = { version = "0.7", features = ["http", "json", "websocket"] }
+gloo-timers = { version = "0.4", features = ["futures"] }
 serde.workspace = true
 serde_json.workspace = true
 wasm-bindgen = "0.2"
