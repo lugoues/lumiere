@@ -16,7 +16,7 @@ jobs:
   ui:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p dist/web
           cp -R target/dx/lumiere-ui/release/web/public/. dist/web/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: web-bundle
           path: dist/web
@@ -49,12 +49,12 @@ jobs:
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: web-bundle
           path: dist/web
@@ -76,7 +76,7 @@ jobs:
             archive="lumiere-${version}-${{ matrix.target }}.tar.gz"
             tar -czf "${archive}" -C "target/${{ matrix.target }}/release" lumiere-daemon lumiere README.md
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.target }}
           path: |
@@ -87,15 +87,15 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: release-*
           path: release-artifacts
           merge-multiple: true
       # Keyless sigstore provenance for every artifact. Verify with:
       #   gh attestation verify <file> --repo lugoues/lumiere
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             release-artifacts/*.tar.gz
@@ -116,7 +116,7 @@ jobs:
           sed -e "s/VERSION/${version}/g" -e "s/SHA256/${sha}/g" \
             packaging/scoop/lumiere.json > release-artifacts/lumiere.json
           python3 -m json.tool release-artifacts/lumiere.json > /dev/null
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             release-artifacts/*.tar.gz
