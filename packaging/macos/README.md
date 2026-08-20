@@ -9,15 +9,19 @@
 
 ## Setting up the tap (once)
 
-1. Create the repo `github.com/lugoues/homebrew-tap` with a `Formula/` directory.
-2. Download `lumiere.rb` from the release and commit it as `Formula/lumiere.rb`.
+1. Create the repo `github.com/lugoues/homebrew-tap` (empty is fine).
+2. Create a fine-grained PAT with contents read/write on that repo and add it
+   to the lumiere repo as the `TAP_GITHUB_TOKEN` actions secret. Every release
+   then pushes `Formula/lumiere.rb` into the tap automatically; without the
+   secret, the workflow skips that step and the formula is still attached to
+   the release for manual copying.
 3. Install:
    ```
    brew tap lugoues/tap
    brew install lugoues/tap/lumiere
    brew services start lumiere    # NO sudo, see below
    ```
-On new releases: replace `Formula/lumiere.rb` with the freshly generated one.
+On new releases: `brew upgrade lumiere` (the tap already has the new formula).
 
 Note: if the lumiere repo is private, `brew install` cannot download the
 tarball anonymously. Either make the repo public or export
