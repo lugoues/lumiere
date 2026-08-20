@@ -51,7 +51,7 @@ version = "0.7.10"
 backend = "cargo:dioxus-cli"
 
 [[tools."npm:@openai/codex"]]
-version = "0.147.0"
+version = "0.148.0"
 backend = "npm:@openai/codex"
 
 [[tools.rust]]
