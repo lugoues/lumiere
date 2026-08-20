@@ -17,6 +17,11 @@ pub struct Config {
     pub token: String,
     #[serde(default)]
     pub cors_origins: Vec<String>,
+    /// Serve the API without bearer-token checks. Anyone who can reach the
+    /// port controls the lights; meant for trusted networks like a tailnet.
+    /// The --disable-authentication flag also turns this on for one run.
+    #[serde(default)]
+    pub disable_authentication: bool,
 }
 
 impl Config {
@@ -38,6 +43,7 @@ impl Config {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9091),
             token: base64url(&token),
             cors_origins: Vec::new(),
+            disable_authentication: false,
         };
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
@@ -66,6 +72,7 @@ impl Config {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0),
             token: token.to_owned(),
             cors_origins: Vec::new(),
+            disable_authentication: false,
         }
     }
 }
