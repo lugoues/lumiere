@@ -4,3 +4,4 @@
 /dist/web/*
 !/dist/web/.gitkeep
 /references/
+.mise/config.local.toml
