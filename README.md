@@ -49,6 +49,60 @@ Lumière follows the operating system's standard per-user directories:
 
 Set `LUMIERE_CONFIG_DIR` or `LUMIERE_DATA_DIR` to override those directories. The data directory contains light labels, presets, and animations. Development builds serve the UI from `dist/web`; `LUMIERE_WEB_ROOT` overrides that path when the `embed-ui` feature is off.
 
+## REST API
+
+Everything the UI does goes through the HTTP API, so scripts and home
+automation can drive the lights directly. All routes live under `/api/v1` and
+take JSON. Authentication is a bearer token from `config.toml`; export it once:
+
+```sh
+TOKEN="..."   # from the config file the daemon prints at startup
+AUTH="Authorization: Bearer $TOKEN"
+BASE="http://127.0.0.1:9091/api/v1"
+```
+
+With `disable_authentication = true` (or `--disable-authentication`), drop the
+header entirely.
+
+```sh
+# Lights: current world state, ids come from here
+curl -H "$AUTH" $BASE/lights
+
+# Scan for new lights (10 seconds)
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json'   -d '{"duration_ms": 10000}' $BASE/scan
+
+# Set every light to 4200 K at 60%; wait:true returns per-light outcomes
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json'   -d '{"selector": {"kind": "all"}, "mode": {"mode": "cct", "temp": 4200, "bri": 60}, "wait": true}'   $BASE/command
+
+# One light to a color (ids are percent-encoded in paths: sim:1 -> sim%3A1)
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json'   -d '{"selector": {"kind": "ids", "ids": ["sim:1"]}, "mode": {"mode": "hsi", "hue": 300, "sat": 100, "bri": 80}}'   $BASE/command
+
+# Power is a mode too
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json'   -d '{"selector": {"kind": "all"}, "mode": {"mode": "off"}}' $BASE/command
+
+# Presets: list, recall, capture new, overwrite existing
+curl -H "$AUTH" $BASE/presets
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json' -d '{"wait": true}' $BASE/presets/daylight/recall
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json'   -d '{"name": "Evening", "selector": {"kind": "all"}}' $BASE/presets
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json' -d '{}' $BASE/presets/evening/capture
+
+# Animations: list, play with options, stop
+curl -H "$AUTH" $BASE/animations
+curl -X POST -H "$AUTH" -H 'Content-Type: application/json'   -d '{"options": {"speed": 1.0, "fps": 5, "bri_scale": 1.0}}' $BASE/animations/police-flash/play
+curl -X POST -H "$AUTH" $BASE/playback/stop
+```
+
+Command results are honest per light: `applied` means the bytes reached the
+light, `adapted` means the request was adjusted to the light's abilities
+(temperature clamped to its range, or color converted to a temperature on a
+bi-color light) with both values reported, `skipped` and `failed` say why.
+
+For live state, subscribe to the WebSocket at `/api/v1/events`: fetch a
+single-use ticket from `POST $BASE/ws-ticket`, connect, and send
+`{"t": "hello", "protocol_version": 1, "ticket": "...", "last_seq": null}`.
+You get a full snapshot, then incremental patches. Polling `GET $BASE/lights`
+works fine for scripts that do not need push updates.
+
 ## Testers wanted
 
 Lumière is developed against two NEEWER-GL1 PRO lights on macOS and Linux.
