@@ -1,4 +1,6 @@
 /target
+/dist/*.tar.gz
+/dist/*.zip
 /dist/web/*
 !/dist/web/.gitkeep
 /references/
