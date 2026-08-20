@@ -19,8 +19,9 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+      - uses: cargo-bins/cargo-binstall@main
       - name: Install Dioxus CLI
-        run: cargo install --locked dioxus-cli
+        run: cargo binstall --no-confirm dioxus-cli
       - name: Build web UI
         working-directory: crates/lumiere-ui
         run: dx build --platform web --release
@@ -62,9 +63,10 @@ jobs:
       - name: Package binaries
         shell: bash
         run: |
-          tag="${GITHUB_REF_NAME}"
-          archive="lumiere-${tag}-${{ matrix.target }}.tar.gz"
-          tar -czf "${archive}" -C "target/${{ matrix.target }}/release" lumiere-daemon lumiere
+          version="${GITHUB_REF_NAME#v}"
+          archive="lumiere-${version}-${{ matrix.target }}.tar.gz"
+          cp README.md "target/${{ matrix.target }}/release/"
+          tar -czf "${archive}" -C "target/${{ matrix.target }}/release" lumiere-daemon lumiere README.md
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.target }}
@@ -74,11 +76,22 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           pattern: release-*
           path: release-artifacts
           merge-multiple: true
+      - name: Render Homebrew formula
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          archive="release-artifacts/lumiere-${version}-aarch64-apple-darwin.tar.gz"
+          sha="$(sha256sum "${archive}" | cut -d' ' -f1)"
+          sed -e "s/VERSION/${version}/g" -e "s/SHA256/${sha}/g" \
+            packaging/homebrew/lumiere.rb > release-artifacts/lumiere.rb
+          grep -q "download/v${version}/lumiere-${version}-" release-artifacts/lumiere.rb
       - uses: softprops/action-gh-release@v2
         with:
-          files: release-artifacts/*.tar.gz
+          files: |
+            release-artifacts/*.tar.gz
+            release-artifacts/lumiere.rb
