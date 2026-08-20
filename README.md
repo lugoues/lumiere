@@ -28,6 +28,16 @@ The daemon prints its API token and a bootstrap URL such as `http://127.0.0.1:90
 
 **On macOS, always use `brew services start lumiere` without `sudo`. Bluetooth TCC permissions require a user LaunchAgent. Using sudo creates a LaunchDaemon, which macOS does not grant Bluetooth access.**
 
+## Verifying releases
+
+Every release artifact carries keyless sigstore provenance signed by the
+GitHub Actions workflow. To check that a download really came from this
+repo's release pipeline:
+
+```sh
+gh attestation verify lumiere-0.1.1-aarch64-apple-darwin.tar.gz --repo lugoues/lumiere
+```
+
 ## Hardware probe
 
 The `lumiere` binary includes focused tools for checking BLE discovery, identifying a light, and benchmarking writes:
