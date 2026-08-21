@@ -8,7 +8,7 @@ pub struct GradientSliderProps {
     pub value: i32,
     pub suffix: String,
     pub gradient: String,
-    pub onchange: EventHandler<i32>,
+    pub onchange: EventHandler<(i32, bool)>,
 }
 
 /// A range control with a gradient track.
@@ -18,6 +18,7 @@ pub struct GradientSliderProps {
 /// anyway (latest write wins), so live preview is free.
 #[component]
 pub fn GradientSlider(props: GradientSliderProps) -> Element {
+    let mut armed = use_signal(|| true);
     let min_label = format!("{}{}", props.min, props.suffix);
     let max_label = format!("{}{}", props.max, props.suffix);
     let value_label = format!("{}{}", props.value, props.suffix);
@@ -40,9 +41,13 @@ pub fn GradientSlider(props: GradientSliderProps) -> Element {
                     style: "background: {gradient}",
                     oninput: move |event| {
                         if let Ok(value) = event.value().parse() {
-                            props.onchange.call(value);
+                            props.onchange.call((value, armed()));
+                            armed.set(false);
                         }
                     },
+                    onpointerup: move |_| armed.set(true),
+                    onpointercancel: move |_| armed.set(true),
+                    onkeyup: move |_| armed.set(true),
                 }
                 span { class: "range-label", "{max_label}" }
             }

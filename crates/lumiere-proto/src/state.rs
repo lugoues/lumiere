@@ -144,8 +144,14 @@ pub enum ResyncReason {
 pub struct CommandRequest {
     pub selector: crate::Selector,
     pub mode: Mode,
+    #[serde(default = "default_true")]
+    pub wake: bool,
     #[serde(default)]
     pub wait: bool,
+}
+
+const fn default_true() -> bool {
+    true
 }
 
 /// Results from applying a command to selected lights.

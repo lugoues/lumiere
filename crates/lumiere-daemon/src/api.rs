@@ -222,7 +222,7 @@ async fn command(
 ) -> Result<impl IntoResponse, ApiError> {
     let results = state
         .registry
-        .set_mode(request.selector, request.mode, request.wait)
+        .set_mode(request.selector, request.mode, request.wake, request.wait)
         .await
         .map_err(ApiError::registry)?;
     Ok(Json(CommandResponse { results }))

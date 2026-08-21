@@ -154,12 +154,12 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                 div { class: "spacer" }
                 button {
                     class: "btn success compact",
-                    onclick: move |_| send_mode(state, on_id.clone(), Mode::On),
+                    onclick: move |_| send_mode(state, on_id.clone(), Mode::On, true),
                     "On"
                 }
                 button {
                     class: "btn danger compact",
-                    onclick: move |_| send_mode(state, off_id.clone(), Mode::Off),
+                    onclick: move |_| send_mode(state, off_id.clone(), Mode::Off, true),
                     "Off"
                 }
             }
@@ -190,10 +190,10 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         value: eff_temp,
                         suffix: " K",
                         gradient: "linear-gradient(90deg, #ff9329 0%, #fff4dc 48%, #c9e2ff 100%)",
-                        onchange: move |value: i32| {
+                        onchange: move |(value, wake): (i32, bool)| {
                             let value = value.clamp(cct_min, cct_max);
                             cct_temp.set(Some(value));
-                            send_mode(state, cct_id.clone(), cct_mode(value, eff_cct_bri));
+                            send_mode(state, cct_id.clone(), cct_mode(value, eff_cct_bri), wake);
                         },
                     }
                     GradientSlider {
@@ -203,9 +203,9 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         value: eff_cct_bri,
                         suffix: "%",
                         gradient: "linear-gradient(90deg, #101018 0%, #ffffff 100%)",
-                        onchange: move |value| {
+                        onchange: move |(value, wake)| {
                             cct_bri.set(Some(value));
-                            send_mode(state, cct_bri_id.clone(), cct_mode(eff_temp, value));
+                            send_mode(state, cct_bri_id.clone(), cct_mode(eff_temp, value), wake);
                         },
                     }
                 }
@@ -218,9 +218,9 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         value: eff_hue,
                         suffix: "°",
                         gradient: "linear-gradient(90deg, #f33 0%, #ff3 17%, #3f3 33%, #3ff 50%, #33f 67%, #f3f 83%, #f33 100%)",
-                        onchange: move |value| {
+                        onchange: move |(value, wake)| {
                             hsi_hue.set(Some(value));
-                            send_mode(state, hue_id.clone(), hsi_mode(value, eff_sat, eff_hsi_bri));
+                            send_mode(state, hue_id.clone(), hsi_mode(value, eff_sat, eff_hsi_bri), wake);
                         },
                     }
                     GradientSlider {
@@ -230,9 +230,9 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         value: eff_sat,
                         suffix: "%",
                         gradient: "linear-gradient(90deg, #ffffff 0%, #ef4444 100%)",
-                        onchange: move |value| {
+                        onchange: move |(value, wake)| {
                             hsi_sat.set(Some(value));
-                            send_mode(state, sat_id.clone(), hsi_mode(eff_hue, value, eff_hsi_bri));
+                            send_mode(state, sat_id.clone(), hsi_mode(eff_hue, value, eff_hsi_bri), wake);
                         },
                     }
                     GradientSlider {
@@ -242,9 +242,9 @@ pub fn LightDrawer(light: LightSnapshot) -> Element {
                         value: eff_hsi_bri,
                         suffix: "%",
                         gradient: "linear-gradient(90deg, #101018 0%, #ffffff 100%)",
-                        onchange: move |value| {
+                        onchange: move |(value, wake)| {
                             hsi_bri.set(Some(value));
-                            send_mode(state, hsi_bri_id.clone(), hsi_mode(eff_hue, eff_sat, value));
+                            send_mode(state, hsi_bri_id.clone(), hsi_mode(eff_hue, eff_sat, value), wake);
                         },
                     }
                 }

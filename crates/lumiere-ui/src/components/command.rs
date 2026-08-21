@@ -7,11 +7,12 @@ use crate::{
 };
 
 /// Sends a live command to exactly one light.
-pub fn send_mode(state: AppState, id: LightId, mode: Mode) {
+pub fn send_mode(state: AppState, id: LightId, mode: Mode, wake: bool) {
     spawn(async move {
         let request = CommandRequest {
             selector: Selector::Ids { ids: vec![id] },
             mode,
+            wake,
             wait: false,
         };
         match ApiClient::new(state.token).post_command(request).await {

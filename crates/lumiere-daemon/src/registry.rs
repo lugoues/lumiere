@@ -78,6 +78,7 @@ pub enum RegistryCmd {
     SetMode {
         selector: Selector,
         mode: Mode,
+        wake: bool,
         wait: bool,
         reply: oneshot::Sender<Vec<PerLightResult>>,
     },
@@ -283,6 +284,7 @@ impl RegistryHandle {
         &self,
         selector: Selector,
         mode: Mode,
+        wake: bool,
         wait: bool,
     ) -> Result<Vec<PerLightResult>, String> {
         let (reply, result) = oneshot::channel();
@@ -290,6 +292,7 @@ impl RegistryHandle {
             .send(RegistryCmd::SetMode {
                 selector,
                 mode,
+                wake,
                 wait,
                 reply,
             })
@@ -612,9 +615,10 @@ impl Registry {
             RegistryCmd::SetMode {
                 selector,
                 mode,
+                wake,
                 wait,
                 reply,
-            } => self.set_mode(selector, mode, wait, reply).await,
+            } => self.set_mode(selector, mode, wake, wait, reply).await,
             RegistryCmd::ListAnimations { reply } => {
                 let summaries = self.animations.values().map(Animation::summary).collect();
                 let _ = reply.send(summaries);
@@ -771,9 +775,14 @@ impl Registry {
                 }
             }
         }
-        self.apply_modes(assignments.into_iter().collect(), wait, move |results| {
-            let _ = reply.send(Ok(results));
-        })
+        self.apply_modes(
+            assignments.into_iter().collect(),
+            true,
+            wait,
+            move |results| {
+                let _ = reply.send(Ok(results));
+            },
+        )
         .await;
     }
 
@@ -845,6 +854,7 @@ impl Registry {
         &mut self,
         selector: Selector,
         mode: Mode,
+        wake: bool,
         wait: bool,
         reply: oneshot::Sender<Vec<PerLightResult>>,
     ) {
@@ -853,14 +863,19 @@ impl Registry {
             .into_iter()
             .map(|index| (index, mode))
             .collect();
-        self.apply_modes(targets, wait, move |results| {
+        self.apply_modes(targets, wake, wait, move |results| {
             let _ = reply.send(results);
         })
         .await;
     }
 
-    async fn apply_modes<F>(&mut self, targets: Vec<(usize, Mode)>, wait: bool, finish: F)
-    where
+    async fn apply_modes<F>(
+        &mut self,
+        targets: Vec<(usize, Mode)>,
+        wake: bool,
+        wait: bool,
+        finish: F,
+    ) where
         F: FnOnce(Vec<PerLightResult>) + Send + 'static,
     {
         if targets
@@ -879,7 +894,7 @@ impl Registry {
             for (index, mode) in targets {
                 self.lights[index]
                     .desired_tx
-                    .send_replace(Some(Desired { mode, wake: true }));
+                    .send_replace(Some(Desired { mode, wake }));
             }
             finish(Vec::new());
             return;
@@ -891,14 +906,14 @@ impl Registry {
             // not an older one. The actor dedupes the echo via last_written.
             self.lights[index]
                 .desired_tx
-                .send_replace(Some(Desired { mode, wake: true }));
+                .send_replace(Some(Desired { mode, wake }));
             let id = self.lights[index].snapshot.id.clone();
             let (actor_reply, actor_result) = oneshot::channel();
             let result = match self.lights[index]
                 .ops_tx
                 .send(LightOp::ApplyNow {
                     mode,
-                    wake: true,
+                    wake,
                     reply: actor_reply,
                 })
                 .await

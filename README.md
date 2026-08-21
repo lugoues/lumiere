@@ -97,6 +97,9 @@ BASE="http://127.0.0.1:9091/api/v1"
 With `disable_authentication = true` (or `--disable-authentication`), drop the
 header entirely.
 
+The command API's `wake` field defaults to `true`, which sends a power-on packet
+before the mode. Set it to `false` for streamed updates such as slider drags.
+
 ```sh
 # Lights: current world state, ids come from here
 curl -H "$AUTH" $BASE/lights

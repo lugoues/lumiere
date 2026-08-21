@@ -133,7 +133,8 @@ async fn set_mode_with_time(
     mode: Mode,
 ) -> Vec<PerLightResult> {
     let registry = registry.clone();
-    let operation = tokio::spawn(async move { registry.set_mode(selector, mode, true).await });
+    let operation =
+        tokio::spawn(async move { registry.set_mode(selector, mode, true, true).await });
     tokio::task::yield_now().await;
     advance(Duration::from_secs(1)).await;
     operation.await.unwrap().unwrap()
@@ -251,6 +252,7 @@ async fn converts_hsi_to_cct_on_bicolor_lights() {
             },
             mode,
             true,
+            true,
         )
         .await
         .unwrap();
@@ -360,6 +362,7 @@ async fn desired_watch_coalesces_bursts() {
                     sat: Percent::new(100).unwrap(),
                     bri: Percent::new(50).unwrap(),
                 },
+                true,
                 false,
             )
             .await
@@ -450,7 +453,7 @@ async fn reconnect_replays_the_acked_mode_not_a_stale_one() {
     };
 
     registry
-        .set_mode(selector.clone(), hsi(10), false)
+        .set_mode(selector.clone(), hsi(10), true, false)
         .await
         .unwrap();
     wait_until_with_time(|| {
@@ -637,7 +640,7 @@ async fn stop_mid_fade_reverts_and_prevents_late_frames() {
     let (sim, registry, _directory) =
         setup_animation(vec![spec("one", "NEEWER-RGB660 PRO")], &animation).await;
     registry
-        .set_mode(Selector::All, hsi(200), false)
+        .set_mode(Selector::All, hsi(200), true, false)
         .await
         .unwrap();
     wait_until_with_time(|| {
@@ -703,7 +706,7 @@ async fn manual_mode_preempts_playback_once_and_wins() {
     let (sim, registry, _directory) =
         setup_animation(vec![spec("one", "NEEWER-RGB660 PRO")], &animation).await;
     registry
-        .set_mode(Selector::All, hsi(200), false)
+        .set_mode(Selector::All, hsi(200), true, false)
         .await
         .unwrap();
     wait_until_with_time(|| {
@@ -725,7 +728,7 @@ async fn manual_mode_preempts_playback_once_and_wins() {
         .unwrap();
     wait_until_with_time(|| sim.light(&id).timeline().len() >= writes_before_playback + 2).await;
     registry
-        .set_mode(Selector::All, hsi(300), false)
+        .set_mode(Selector::All, hsi(300), true, false)
         .await
         .unwrap();
     advance(Duration::from_secs(1)).await;

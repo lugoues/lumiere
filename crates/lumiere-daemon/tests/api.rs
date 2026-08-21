@@ -146,6 +146,7 @@ fn cct_command(wait: bool) -> serde_json::Value {
             temp: Kelvin::new(5600).unwrap(),
             bri: Percent::new(50).unwrap(),
         },
+        wake: true,
         wait,
     })
     .unwrap()
@@ -382,6 +383,7 @@ async fn preset_factory_capture_recall_rename_and_delete_round_trip() {
             &serde_json::to_value(lumiere_proto::CommandRequest {
                 selector: Selector::All,
                 mode: Mode::Off,
+                wake: true,
                 wait: true,
             })
             .unwrap(),
