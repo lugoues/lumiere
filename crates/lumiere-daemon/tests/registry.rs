@@ -640,8 +640,14 @@ async fn stop_mid_fade_reverts_and_prevents_late_frames() {
         .set_mode(Selector::All, hsi(200), false)
         .await
         .unwrap();
-    wait_until(|| sim.light(&id).timeline().len() == 1).await;
-    advance(Duration::from_millis(50)).await;
+    wait_until_with_time(|| {
+        matches!(
+            sim.light(&id).last(),
+            Some((_, Decoded::Hsi { hue: 200, .. }))
+        )
+    })
+    .await;
+    let writes_before_playback = sim.light(&id).timeline().len();
     registry
         .play(
             animation.id.clone(),
@@ -650,13 +656,13 @@ async fn stop_mid_fade_reverts_and_prevents_late_frames() {
         )
         .await
         .unwrap();
-    wait_until(|| sim.light(&id).timeline().len() == 2).await;
+    wait_until_with_time(|| sim.light(&id).timeline().len() >= writes_before_playback + 2).await;
     advance(Duration::from_millis(250)).await;
-    wait_until(|| sim.light(&id).timeline().len() >= 3).await;
+    wait_until(|| sim.light(&id).timeline().len() >= writes_before_playback + 3).await;
     let stopped_at = tokio::time::Instant::now();
     assert!(registry.stop_playback().await.unwrap());
     advance(Duration::from_millis(200)).await;
-    wait_until(|| {
+    wait_until_with_time(|| {
         matches!(
             sim.light(&id).last(),
             Some((_, Decoded::Hsi { hue: 200, .. }))
@@ -668,7 +674,7 @@ async fn stop_mid_fade_reverts_and_prevents_late_frames() {
         sim.light(&id)
             .timeline()
             .iter()
-            .all(|(at, _)| *at <= stopped_at + Duration::from_millis(200))
+            .all(|(at, _)| *at <= stopped_at + Duration::from_millis(400))
     );
     advance(Duration::from_millis(1_800)).await;
     assert_eq!(sim.light(&id).timeline().len(), writes_after_revert);
@@ -700,8 +706,14 @@ async fn manual_mode_preempts_playback_once_and_wins() {
         .set_mode(Selector::All, hsi(200), false)
         .await
         .unwrap();
-    wait_until(|| sim.light(&id).timeline().len() == 1).await;
-    advance(Duration::from_millis(50)).await;
+    wait_until_with_time(|| {
+        matches!(
+            sim.light(&id).last(),
+            Some((_, Decoded::Hsi { hue: 200, .. }))
+        )
+    })
+    .await;
+    let writes_before_playback = sim.light(&id).timeline().len();
     let mut events = registry.events();
     registry
         .play(
@@ -711,13 +723,13 @@ async fn manual_mode_preempts_playback_once_and_wins() {
         )
         .await
         .unwrap();
-    wait_until(|| sim.light(&id).timeline().len() == 2).await;
+    wait_until_with_time(|| sim.light(&id).timeline().len() >= writes_before_playback + 2).await;
     registry
         .set_mode(Selector::All, hsi(300), false)
         .await
         .unwrap();
     advance(Duration::from_secs(1)).await;
-    wait_until(|| {
+    wait_until_with_time(|| {
         matches!(
             sim.light(&id).last(),
             Some((_, Decoded::Hsi { hue: 300, .. }))
@@ -871,17 +883,14 @@ async fn preset_recall_preempts_playback_once() {
     registry.shutdown().await;
 }
 
-/// Recalling a mode onto a light that was turned off must wake it first:
-/// Neewer mode writes do not power the light on by themselves.
 #[tokio::test(start_paused = true)]
-async fn lit_modes_wake_a_light_that_was_turned_off() {
+async fn set_mode_wakes_before_writing_the_mode() {
     let (sim, registry) = setup(four_lights()).await;
     let id = LightId::sim("rgb660");
     let selector = Selector::Ids {
         ids: vec![id.clone()],
     };
 
-    set_mode_with_time(&registry, selector.clone(), Mode::Off).await;
     let cct = Mode::Cct {
         temp: Kelvin::new(4200).unwrap(),
         bri: Percent::new(50).unwrap(),
@@ -898,7 +907,6 @@ async fn lit_modes_wake_a_light_that_was_turned_off() {
     assert_eq!(
         tail,
         vec![
-            Decoded::Power(false),
             Decoded::Power(true),
             Decoded::Cct {
                 temp_hk: 42,
@@ -915,5 +923,56 @@ async fn lit_modes_wake_a_light_that_was_turned_off() {
         .cloned()
         .unwrap();
     assert_eq!(light.power, Some(true));
+    registry.shutdown().await;
+}
+
+#[tokio::test(start_paused = true)]
+async fn only_the_first_animation_frame_wakes_the_light() {
+    let animation = test_animation(
+        vec![
+            Keyframe {
+                hold_ms: 100,
+                fade_ms: 0,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(10))]),
+            },
+            Keyframe {
+                hold_ms: 100,
+                fade_ms: 0,
+                lights: BTreeMap::from([(AnimTarget::All, hsi(20))]),
+            },
+        ],
+        0,
+    );
+    let id = LightId::sim("one");
+    let (sim, registry, _directory) =
+        setup_animation(vec![spec("one", "NEEWER-RGB660 PRO")], &animation).await;
+
+    registry
+        .play(
+            animation.id,
+            PlaybackOptions {
+                revert_on_finish: false,
+                ..PlaybackOptions::default()
+            },
+            TargetBinding::default(),
+        )
+        .await
+        .unwrap();
+    wait_until_with_time(|| sim.light(&id).timeline().len() >= 3).await;
+
+    let packets = sim
+        .light(&id)
+        .timeline()
+        .into_iter()
+        .map(|(_, decoded)| decoded)
+        .collect::<Vec<_>>();
+    assert!(matches!(
+        packets.as_slice(),
+        [
+            Decoded::Power(true),
+            Decoded::Hsi { hue: 10, .. },
+            Decoded::Hsi { hue: 20, .. }
+        ]
+    ));
     registry.shutdown().await;
 }

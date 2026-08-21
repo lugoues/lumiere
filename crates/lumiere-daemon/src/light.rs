@@ -20,8 +20,15 @@ pub enum LightOp {
     /// Writes this mode immediately and replies after the write finishes.
     ApplyNow {
         mode: Mode,
+        wake: bool,
         reply: oneshot::Sender<PerLightResult>,
     },
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct Desired {
+    pub mode: Mode,
+    pub wake: bool,
 }
 
 pub(crate) struct LightActor {
@@ -29,7 +36,7 @@ pub(crate) struct LightActor {
     caps: Capabilities,
     transport: Arc<dyn Transport>,
     registry_tx: mpsc::Sender<RegistryInput>,
-    desired_rx: watch::Receiver<Option<Mode>>,
+    desired_rx: watch::Receiver<Option<Desired>>,
     ops_rx: mpsc::Receiver<LightOp>,
     write_permits: Arc<Semaphore>,
     min_interval: Duration,
@@ -44,11 +51,7 @@ pub(crate) struct LightActor {
     /// Used to drop duplicate desired-watch echoes; cleared on every (re)connect
     /// so a fresh link always gets a full rewrite.
     last_written: Option<Mode>,
-    /// True only after this link has carried a power-on (alone or prepended).
-    /// Mode writes do not wake a Neewer light, and the light may be off for
-    /// reasons this daemon never saw (a previous session, the physical switch),
-    /// so the first lit write on every link prepends a power-on.
-    power_known_on: bool,
+    wake_pending: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -70,7 +73,7 @@ pub(crate) struct LightActorArgs {
     pub caps: Capabilities,
     pub transport: Arc<dyn Transport>,
     pub registry_tx: mpsc::Sender<RegistryInput>,
-    pub desired_rx: watch::Receiver<Option<Mode>>,
+    pub desired_rx: watch::Receiver<Option<Desired>>,
     pub ops_rx: mpsc::Receiver<LightOp>,
     pub write_permits: Arc<Semaphore>,
     pub min_interval: Duration,
@@ -97,7 +100,7 @@ impl LightActor {
             ops_open: true,
             retry: None,
             last_written: None,
-            power_known_on: false,
+            wake_pending: false,
         }
     }
 
@@ -109,11 +112,14 @@ impl LightActor {
                 Next::Op(Some(op)) => self.handle_op(op).await,
                 Next::Op(None) => self.ops_open = false,
                 Next::Desired(Ok(())) => {
-                    let mode = *self.desired_rx.borrow_and_update();
-                    if let Some(mode) = mode
-                        && self.last_written != Some(mode)
+                    let desired = *self.desired_rx.borrow_and_update();
+                    if let Some(desired) = desired {
+                        self.wake_pending |= desired.wake;
+                    }
+                    if let Some(desired) = desired
+                        && (self.last_written != Some(desired.mode) || self.wake_pending)
                     {
-                        let result = self.apply_desired(mode).await;
+                        let result = self.apply_desired(desired.mode).await;
                         self.report_result(result).await;
                     }
                 }
@@ -180,7 +186,13 @@ impl LightActor {
                     .await;
                 let _ = reply.send(result);
             }
-            LightOp::ApplyNow { mode, reply } => {
+            LightOp::ApplyNow { mode, wake, reply } => {
+                if self.desired_rx.has_changed().unwrap_or(false)
+                    && let Some(desired) = *self.desired_rx.borrow_and_update()
+                {
+                    self.wake_pending |= desired.wake;
+                }
+                self.wake_pending |= wake;
                 let result = self.apply(mode).await;
                 self.report_result(result.clone()).await;
                 let _ = reply.send(result);
@@ -200,7 +212,6 @@ impl LightActor {
             Ok(link) => {
                 self.link = Some(link);
                 self.last_written = None;
-                self.power_known_on = false;
                 tracing::info!(light_id = %self.id, "connected to light");
                 self.report_connection(ConnState::Connected, None).await;
                 Ok(())
@@ -243,7 +254,6 @@ impl LightActor {
             Ok(link) => {
                 self.link = Some(link);
                 self.last_written = None;
-                self.power_known_on = false;
                 tracing::info!(light_id = %self.id, attempt = retry.attempt, "reconnected to light");
                 self.report_connection(ConnState::Connected, None).await;
                 self.apply_current_desired().await;
@@ -298,8 +308,8 @@ impl LightActor {
         let (applied, clamped) = clamp_to_device(requested_for_device, &self.caps);
         let adapted = converted || clamped;
         tracing::debug!(light_id = %self.id, ?requested, ?applied, adapted, "resolved light mode");
-        if !self.power_known_on && !matches!(applied, Mode::Off) {
-            tracing::debug!(light_id = %self.id, ?applied, "sending wake packet because power state is not known on");
+        if self.wake_pending && !matches!(applied, Mode::Off) {
+            tracing::debug!(light_id = %self.id, ?applied, "sending requested wake packet");
             for packet in encode(Mode::On, &self.caps) {
                 if let Err(error) = self.write_packet(packet.as_bytes()).await {
                     self.last_written = None;
@@ -309,7 +319,7 @@ impl LightActor {
                     };
                 }
             }
-            self.power_known_on = true;
+            self.wake_pending = false;
         }
         for packet in encode(applied, &self.caps) {
             if let Err(error) = self.write_packet(packet.as_bytes()).await {
@@ -322,7 +332,6 @@ impl LightActor {
         }
 
         self.last_written = Some(requested);
-        self.power_known_on = !matches!(applied, Mode::Off);
         if adapted {
             PerLightResult::Adapted {
                 id: self.id.clone(),
@@ -352,16 +361,18 @@ impl LightActor {
             if self.desired_rx.has_changed().unwrap_or(false)
                 && let Some(newest) = *self.desired_rx.borrow_and_update()
             {
-                requested = newest;
+                requested = newest.mode;
+                self.wake_pending |= newest.wake;
             }
         }
         self.apply(requested).await
     }
 
     async fn apply_current_desired(&mut self) {
-        let mode = *self.desired_rx.borrow();
-        if let Some(mode) = mode {
-            let result = self.apply_desired(mode).await;
+        let desired = *self.desired_rx.borrow();
+        if let Some(desired) = desired {
+            self.wake_pending = true;
+            let result = self.apply_desired(desired.mode).await;
             self.report_result(result).await;
         }
     }

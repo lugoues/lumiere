@@ -23,7 +23,7 @@ use tokio_util::{sync::CancellationToken, task::TaskTracker};
 use tracing::warn;
 
 use crate::{
-    light::{LightActor, LightActorArgs, LightOp},
+    light::{Desired, LightActor, LightActorArgs, LightOp},
     store::StoreUpdate,
 };
 
@@ -154,7 +154,7 @@ pub(crate) enum PlaybackFinishReason {
 
 struct LightHandle {
     snapshot: LightSnapshot,
-    desired_tx: watch::Sender<Option<Mode>>,
+    desired_tx: watch::Sender<Option<Desired>>,
     ops_tx: mpsc::Sender<LightOp>,
 }
 
@@ -877,7 +877,9 @@ impl Registry {
 
         if !wait {
             for (index, mode) in targets {
-                self.lights[index].desired_tx.send_replace(Some(mode));
+                self.lights[index]
+                    .desired_tx
+                    .send_replace(Some(Desired { mode, wake: true }));
             }
             finish(Vec::new());
             return;
@@ -887,13 +889,16 @@ impl Registry {
         for (index, mode) in targets {
             // Keep the desired watch in sync so a later reconnect replays this mode,
             // not an older one. The actor dedupes the echo via last_written.
-            self.lights[index].desired_tx.send_replace(Some(mode));
+            self.lights[index]
+                .desired_tx
+                .send_replace(Some(Desired { mode, wake: true }));
             let id = self.lights[index].snapshot.id.clone();
             let (actor_reply, actor_result) = oneshot::channel();
             let result = match self.lights[index]
                 .ops_tx
                 .send(LightOp::ApplyNow {
                     mode,
+                    wake: true,
                     reply: actor_reply,
                 })
                 .await
@@ -931,7 +936,8 @@ impl Registry {
                 .await;
         }
 
-        let mut targets: BTreeMap<AnimTarget, Vec<watch::Sender<Option<Mode>>>> = BTreeMap::new();
+        let mut targets: BTreeMap<AnimTarget, Vec<watch::Sender<Option<Desired>>>> =
+            BTreeMap::new();
         let mut leased = HashSet::new();
         for (target, indices) in target_indices {
             let senders = indices
@@ -978,7 +984,7 @@ impl Registry {
             let start = Instant::now();
             let mut reason = PlaybackFinishReason::Natural;
             let duration = playback_duration(&animation, &options);
-            for frame in schedule(&animation, &options) {
+            for (frame_index, frame) in schedule(&animation, &options).enumerate() {
                 let deadline = start + Duration::from_millis(frame.at_ms);
                 let cancelled = tokio::select! {
                     biased;
@@ -992,7 +998,10 @@ impl Registry {
                 for (target, mode) in frame.ops {
                     if let Some(senders) = targets.get(&target) {
                         for sender in senders {
-                            sender.send_replace(Some(mode));
+                            sender.send_replace(Some(Desired {
+                                mode,
+                                wake: frame_index == 0,
+                            }));
                         }
                     }
                 }
@@ -1011,7 +1020,7 @@ impl Registry {
             }
             if options.revert_on_finish && !matches!(reason, PlaybackFinishReason::Chained) {
                 for (sender, mode) in revert {
-                    sender.send_replace(Some(mode));
+                    sender.send_replace(Some(Desired { mode, wake: true }));
                 }
             }
             let _ = done_tx.send(());
