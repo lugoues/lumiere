@@ -74,6 +74,14 @@ Lumière follows the operating system's standard per-user directories:
 
 Set `LUMIERE_CONFIG_DIR` or `LUMIERE_DATA_DIR` to override those directories. The data directory contains light labels, presets, and animations. Development builds serve the UI from `dist/web`; `LUMIERE_WEB_ROOT` overrides that path when the `embed-ui` feature is off.
 
+### Logging
+
+The daemon logs to stderr at `info` level by default. Set a tracing filter with
+`--log FILTER`, `RUST_LOG`, or the `log` key in `config.toml`, in that order of
+precedence. For systemd, run `sudo systemctl edit lumiere`, add
+`Environment=RUST_LOG=lumiere_daemon=debug` under `[Service]`, then restart the
+service.
+
 ## REST API
 
 Everything the UI does goes through the HTTP API, so scripts and home

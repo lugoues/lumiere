@@ -14,6 +14,8 @@ DynamicUser=yes
 StateDirectory=lumiere
 Environment=LUMIERE_CONFIG_DIR=/var/lib/lumiere/config
 Environment=LUMIERE_DATA_DIR=/var/lib/lumiere/data
+# Uncomment to enable daemon debug logging in the journal.
+#Environment=RUST_LOG=lumiere_daemon=debug
 
 # Debian's D-Bus policy grants org.bluez access to the bluetooth group.
 SupplementaryGroups=bluetooth

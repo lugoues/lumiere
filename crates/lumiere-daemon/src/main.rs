@@ -16,10 +16,32 @@ use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    let args = match Args::parse() {
+        Ok(Some(args)) => args,
+        Ok(None) => return ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let config = Config::load_or_create();
+    let config_log = config
+        .as_ref()
+        .ok()
+        .and_then(|config| config.log.as_deref());
+    if let Err(error) = init_tracing(args.log.as_deref(), config_log) {
+        eprintln!("invalid log filter: {error}");
+        return ExitCode::FAILURE;
+    }
+    let config = match config {
+        Ok(config) => config,
+        Err(error) => {
+            eprintln!("{error}");
+            return ExitCode::FAILURE;
+        }
+    };
 
-    match run().await {
+    match run(args, config).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("{error}");
@@ -34,6 +56,8 @@ Options:
   --sim              Serve four simulated lights instead of Bluetooth hardware
   --bind ADDR:PORT   Listen address for this run, overriding the config file
                      (example: --bind 127.0.0.1:9090)
+  --log FILTER       Tracing filter for this run (example: debug or
+                     lumiere_daemon=debug,lumiere_transport=trace)
   --disable-authentication
                      Serve the API without bearer-token checks for this run.
                      Anyone who can reach the port controls the lights; meant
@@ -44,42 +68,73 @@ Options:
 
 The persistent listen address, auth token, and CORS origins live in the config
 file printed at startup. Environment overrides: LUMIERE_CONFIG_DIR,
-LUMIERE_DATA_DIR, LUMIERE_WEB_ROOT.";
+LUMIERE_DATA_DIR, LUMIERE_WEB_ROOT. RUST_LOG sets the tracing filter.";
 
-async fn run() -> Result<(), Box<dyn Error>> {
-    let mut sim = false;
-    let mut bind = None;
-    let mut disable_authentication = false;
-    let mut args = std::env::args().skip(1);
-    while let Some(argument) = args.next() {
-        match argument.as_str() {
-            "--sim" => sim = true,
-            "--bind" => {
-                let value = args.next().ok_or("--bind requires ADDR:PORT")?;
-                bind = Some(value.parse().map_err(|_| {
-                    format!(
-                        "invalid --bind value {value:?}; expected ADDR:PORT like 127.0.0.1:9090"
-                    )
-                })?);
+struct Args {
+    sim: bool,
+    bind: Option<std::net::SocketAddr>,
+    log: Option<String>,
+    disable_authentication: bool,
+}
+
+impl Args {
+    fn parse() -> Result<Option<Self>, Box<dyn Error>> {
+        let mut parsed = Self {
+            sim: false,
+            bind: None,
+            log: None,
+            disable_authentication: false,
+        };
+        let mut args = std::env::args().skip(1);
+        while let Some(argument) = args.next() {
+            match argument.as_str() {
+                "--sim" => parsed.sim = true,
+                "--bind" => {
+                    let value = args.next().ok_or("--bind requires ADDR:PORT")?;
+                    parsed.bind = Some(value.parse().map_err(|_| {
+                        format!(
+                            "invalid --bind value {value:?}; expected ADDR:PORT like 127.0.0.1:9090"
+                        )
+                    })?);
+                }
+                "--log" => parsed.log = Some(args.next().ok_or("--log requires FILTER")?),
+                "--disable-authentication" => parsed.disable_authentication = true,
+                "-h" | "--help" => {
+                    println!("{USAGE}");
+                    return Ok(None);
+                }
+                other => return Err(format!("unknown argument {other:?}\n\n{USAGE}").into()),
             }
-            "--disable-authentication" => disable_authentication = true,
-            "-h" | "--help" => {
-                println!("{USAGE}");
-                return Ok(());
-            }
-            other => return Err(format!("unknown argument {other:?}\n\n{USAGE}").into()),
         }
+        Ok(Some(parsed))
     }
+}
 
-    let mut config = Config::load_or_create()?;
-    if let Some(bind) = bind {
+fn init_tracing(flag: Option<&str>, config: Option<&str>) -> Result<(), Box<dyn Error>> {
+    let env = std::env::var("RUST_LOG").ok();
+    let directive = flag.or(env.as_deref()).or(config).unwrap_or("info");
+    let filter = EnvFilter::try_new(directive)?;
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .init();
+    Ok(())
+}
+
+async fn run(args: Args, mut config: Config) -> Result<(), Box<dyn Error>> {
+    if let Some(bind) = args.bind {
         config.bind = bind;
     }
     println!("Config file: {}", Config::path()?.display());
-    if sim {
-        serve(sim_transport(), config, disable_authentication).await
+    if args.sim {
+        serve(sim_transport(), config, args.disable_authentication).await
     } else {
-        serve(BleTransport::new().await?, config, disable_authentication).await
+        serve(
+            BleTransport::new().await?,
+            config,
+            args.disable_authentication,
+        )
+        .await
     }
 }
 

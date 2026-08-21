@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{fmt, sync::Arc, time::Duration};
 
 use lumiere_core::wire::{clamp_to_device, encode, hsi_to_cct};
 use lumiere_proto::{Capabilities, ConnState, LightId, Mode, PerLightResult, SkipReason};
@@ -194,12 +194,14 @@ impl LightActor {
             return Ok(());
         }
         self.link = None;
+        tracing::info!(light_id = %self.id, ?state, "connecting to light");
         self.report_connection(state, None).await;
         match self.transport.connect(&self.id, self.connect_timeout).await {
             Ok(link) => {
                 self.link = Some(link);
                 self.last_written = None;
                 self.power_known_on = false;
+                tracing::info!(light_id = %self.id, "connected to light");
                 self.report_connection(ConnState::Connected, None).await;
                 Ok(())
             }
@@ -212,6 +214,7 @@ impl LightActor {
                     attempt,
                     at: Instant::now() + retry_delay(attempt),
                 });
+                tracing::warn!(light_id = %self.id, %error, attempt, "light connection failed; retrying");
                 self.report_connection(ConnState::Reconnecting { attempt }, Some(error.clone()))
                     .await;
                 Err(error)
@@ -226,6 +229,7 @@ impl LightActor {
             attempt,
             at: Instant::now() + retry_delay(attempt),
         });
+        tracing::warn!(light_id = %self.id, attempt, "light connection closed; retrying");
         self.report_connection(ConnState::Reconnecting { attempt }, None)
             .await;
     }
@@ -234,11 +238,13 @@ impl LightActor {
         let Some(retry) = self.retry.take() else {
             return;
         };
+        tracing::info!(light_id = %self.id, attempt = retry.attempt, "retrying light connection");
         match self.transport.connect(&self.id, self.connect_timeout).await {
             Ok(link) => {
                 self.link = Some(link);
                 self.last_written = None;
                 self.power_known_on = false;
+                tracing::info!(light_id = %self.id, attempt = retry.attempt, "reconnected to light");
                 self.report_connection(ConnState::Connected, None).await;
                 self.apply_current_desired().await;
             }
@@ -248,6 +254,7 @@ impl LightActor {
                     attempt,
                     at: Instant::now() + retry_delay(attempt),
                 });
+                tracing::warn!(light_id = %self.id, %error, attempt, "light reconnect failed; retrying");
                 self.report_connection(
                     ConnState::Reconnecting { attempt },
                     Some(error.to_string()),
@@ -255,6 +262,7 @@ impl LightActor {
                 .await;
             }
             Err(error) => {
+                tracing::warn!(light_id = %self.id, %error, attempt = retry.attempt, "light reconnect failed; giving up");
                 self.report_connection(ConnState::Lost, Some(error.to_string()))
                     .await;
             }
@@ -263,6 +271,7 @@ impl LightActor {
 
     async fn apply(&mut self, requested: Mode) -> PerLightResult {
         if !self.link.as_ref().is_some_and(|link| link.is_connected()) {
+            tracing::debug!(light_id = %self.id, ?requested, reason = ?SkipReason::NotConnected, "skipping light mode");
             return PerLightResult::Skipped {
                 id: self.id.clone(),
                 reason: SkipReason::NotConnected,
@@ -270,6 +279,7 @@ impl LightActor {
         }
         if matches!(requested, Mode::Scene { .. }) && !self.caps.scenes {
             self.last_written = Some(requested);
+            tracing::debug!(light_id = %self.id, ?requested, reason = ?SkipReason::UnsupportedMode, "skipping light mode");
             return PerLightResult::Skipped {
                 id: self.id.clone(),
                 reason: SkipReason::UnsupportedMode,
@@ -287,7 +297,9 @@ impl LightActor {
         };
         let (applied, clamped) = clamp_to_device(requested_for_device, &self.caps);
         let adapted = converted || clamped;
+        tracing::debug!(light_id = %self.id, ?requested, ?applied, adapted, "resolved light mode");
         if !self.power_known_on && !matches!(applied, Mode::Off) {
+            tracing::debug!(light_id = %self.id, ?applied, "sending wake packet because power state is not known on");
             for packet in encode(Mode::On, &self.caps) {
                 if let Err(error) = self.write_packet(packet.as_bytes()).await {
                     self.last_written = None;
@@ -371,6 +383,7 @@ impl LightActor {
             _ = self.cancel.cancelled() => return Err("daemon is shutting down".into()),
             permit = self.write_permits.acquire() => permit.map_err(|_| "write limiter closed".to_owned())?,
         };
+        tracing::trace!(light_id = %self.id, packet = %Hex(packet), "writing light packet");
         let result = match self.link.as_ref() {
             Some(link) => link
                 .write(packet, WriteKind::WithoutResponse)
@@ -380,6 +393,9 @@ impl LightActor {
         };
         drop(permit);
         self.next_write_at = Instant::now() + self.min_interval;
+        if let Err(error) = &result {
+            tracing::warn!(light_id = %self.id, %error, packet = %Hex(packet), "light packet write failed");
+        }
         result
     }
 
@@ -413,6 +429,17 @@ impl LightActor {
         {
             let _ = ack_rx.await;
         }
+    }
+}
+
+struct Hex<'a>(&'a [u8]);
+
+impl fmt::Display for Hex<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for byte in self.0 {
+            write!(formatter, "{byte:02x}")?;
+        }
+        Ok(())
     }
 }
 

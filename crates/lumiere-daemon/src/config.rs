@@ -15,6 +15,8 @@ pub struct Config {
     pub bind: SocketAddr,
     pub token: String,
     #[serde(default)]
+    pub log: Option<String>,
+    #[serde(default)]
     pub cors_origins: Vec<String>,
     /// Serve the API without bearer-token checks. Anyone who can reach the
     /// port controls the lights; meant for trusted networks like a tailnet.
@@ -41,6 +43,7 @@ impl Config {
         let config = Self {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 9091),
             token: base64url(&token),
+            log: None,
             cors_origins: Vec::new(),
             disable_authentication: false,
         };
@@ -70,6 +73,7 @@ impl Config {
         Self {
             bind: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0),
             token: token.to_owned(),
+            log: None,
             cors_origins: Vec::new(),
             disable_authentication: false,
         }

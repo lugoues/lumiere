@@ -197,6 +197,7 @@ impl Transport for BleTransport {
         id: &LightId,
         timeout: Duration,
     ) -> Result<Box<dyn Link>, TransportError> {
+        tracing::debug!(light_id = %id, ?timeout, "connecting BLE peripheral");
         self.refresh_peripherals().await?;
         let peripheral_id = self
             .ids
@@ -242,6 +243,7 @@ impl Transport for BleTransport {
             .entry(peripheral_id.clone())
             .or_default()
             .push(Arc::downgrade(&connected));
+        tracing::debug!(light_id = %id, "connected BLE peripheral");
         Ok(Box::new(BleLink {
             id: id.clone(),
             peripheral_id,
@@ -308,6 +310,7 @@ impl Link for BleLink {
             WriteKind::WithResponse => WriteType::WithResponse,
             WriteKind::WithoutResponse => WriteType::WithoutResponse,
         };
+        tracing::trace!(light_id = %self.id, bytes = payload.len(), ?kind, "writing BLE characteristic");
         self.peripheral
             .write(&self.write, payload, write_type)
             .await
