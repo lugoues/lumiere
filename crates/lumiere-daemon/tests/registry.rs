@@ -428,6 +428,65 @@ async fn reconnects_and_replays_strictly_sequenced_events() {
 }
 
 #[tokio::test(start_paused = true)]
+async fn rediscovery_recovers_lost_but_not_user_disconnected_lights() {
+    let (sim, registry) = setup(vec![spec("one", "NEEWER-RGB660 PRO")]).await;
+    let id = LightId::sim("one");
+    let light = sim.light(&id);
+    let mut events = registry.events();
+
+    light.fail_next_connects(5);
+    light.force_disconnect();
+    wait_until(|| {
+        registry
+            .world()
+            .borrow()
+            .lights
+            .iter()
+            .any(|light| light.id == id && matches!(light.conn, ConnState::Reconnecting { .. }))
+    })
+    .await;
+    for _ in 0..20 {
+        advance(Duration::from_secs(1)).await;
+        for _ in 0..10 {
+            tokio::task::yield_now().await;
+        }
+    }
+    let mut saw_lost = false;
+    while let Ok(event) = events.try_recv() {
+        saw_lost |= matches!(
+            event.event,
+            Event::Light { light } if light.id == id && light.conn == ConnState::Lost
+        );
+    }
+    assert!(saw_lost);
+    wait_until(|| {
+        registry
+            .world()
+            .borrow()
+            .lights
+            .iter()
+            .find(|light| light.id == id)
+            .is_some_and(|light| light.conn == ConnState::Connected)
+    })
+    .await;
+    assert!(light.is_connected());
+
+    registry.disconnect(id.clone()).await.unwrap();
+    assert!(!light.is_connected());
+    registry.discover(Duration::from_secs(1)).await.unwrap();
+    advance(Duration::from_secs(1)).await;
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+    assert!(!light.is_connected());
+    assert_eq!(
+        registry.world().borrow().lights[0].conn,
+        ConnState::Discovered
+    );
+    registry.shutdown().await;
+}
+
+#[tokio::test(start_paused = true)]
 async fn shutdown_disconnects_every_link() {
     let (sim, registry) = setup(four_lights()).await;
     registry.shutdown().await;

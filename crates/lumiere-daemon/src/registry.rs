@@ -20,7 +20,7 @@ use lumiere_transport::{Discovered, ScanFilter, Transport};
 use tokio::sync::{Semaphore, broadcast, mpsc, oneshot, watch};
 use tokio::time::Instant;
 use tokio_util::{sync::CancellationToken, task::TaskTracker};
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{
     light::{Desired, LightActor, LightActorArgs, LightOp},
@@ -223,6 +223,7 @@ impl RegistryHandle {
             presets,
             active: None,
             next_playback_id: 1,
+            rescue_scan: None,
         };
         tokio::spawn(registry.run());
 
@@ -517,6 +518,7 @@ struct Registry {
     presets: Vec<Preset>,
     active: Option<ActivePlayback>,
     next_playback_id: u64,
+    rescue_scan: Option<CancellationToken>,
 }
 
 struct ActivePlayback {
@@ -566,7 +568,9 @@ impl Registry {
 
     async fn handle_command(&mut self, command: RegistryCmd) {
         match command {
-            RegistryCmd::Discover { duration } => self.start_scan(duration),
+            RegistryCmd::Discover { duration } => {
+                self.spawn_scan(self.cancel.child_token(), Some(duration), false)
+            }
             RegistryCmd::Connect { id, reply } => {
                 if self.active_leases(&id) {
                     self.cancel_active(PlaybackFinishReason::Cancelled, true)
@@ -818,36 +822,66 @@ impl Registry {
         }
     }
 
-    fn start_scan(&self, duration: Duration) {
+    fn spawn_scan(&self, cancel: CancellationToken, duration: Option<Duration>, retry: bool) {
         let transport = Arc::clone(&self.transport);
         let input_tx = self.input_tx.clone();
-        let cancel = self.cancel.clone();
         self.tracker.spawn(async move {
-            // Everything else on the air (headphones, watches, beacons) is noise.
             let filter = ScanFilter {
                 name_prefix: Some("NEEWER".to_owned()),
             };
-            let Ok(mut scan) = transport.scan(filter).await else {
-                return;
-            };
-            let deadline = tokio::time::sleep(duration);
-            tokio::pin!(deadline);
-            loop {
-                tokio::select! {
-                    biased;
-                    _ = cancel.cancelled() => break,
-                    _ = &mut deadline => break,
-                    discovered = scan.events.next() => match discovered {
-                        Some(discovered) => {
-                            if input_tx.send(RegistryInput::Discovered(discovered)).await.is_err() {
-                                break;
-                            }
+            let deadline = duration.map(|duration| Instant::now() + duration);
+            'scan: loop {
+                let mut scan = match transport.scan(filter.clone()).await {
+                    Ok(scan) => scan,
+                    Err(error) if retry => {
+                        tracing::warn!(%error, "rescue scan failed to start; retrying");
+                        tokio::select! {
+                            _ = cancel.cancelled() => break,
+                            _ = tokio::time::sleep(Duration::from_secs(3)) => continue,
+                            _ = wait_for_deadline(deadline) => break,
                         }
-                        None => break,
+                    }
+                    Err(_) => break,
+                };
+                loop {
+                    tokio::select! {
+                        biased;
+                        _ = cancel.cancelled() => break 'scan,
+                        _ = wait_for_deadline(deadline) => break 'scan,
+                        discovered = scan.events.next() => match discovered {
+                            Some(discovered) => {
+                                if input_tx.send(RegistryInput::Discovered(discovered)).await.is_err() {
+                                    break 'scan;
+                                }
+                            }
+                            None if retry => continue 'scan,
+                            None => break 'scan,
+                        }
                     }
                 }
             }
         });
+    }
+
+    fn reconcile_rescue_scan(&mut self) {
+        let lost = self
+            .lights
+            .iter()
+            .any(|light| light.snapshot.conn == ConnState::Lost);
+        match (lost, self.rescue_scan.take()) {
+            (true, None) => {
+                info!("starting rescue scan for lost lights");
+                let cancel = self.cancel.child_token();
+                self.spawn_scan(cancel.clone(), None, true);
+                self.rescue_scan = Some(cancel);
+            }
+            (true, Some(cancel)) => self.rescue_scan = Some(cancel),
+            (false, Some(cancel)) => {
+                info!("stopping rescue scan; no lights are lost");
+                cancel.cancel();
+            }
+            (false, None) => {}
+        }
     }
 
     async fn set_mode(
@@ -1162,10 +1196,12 @@ impl Registry {
                     }
                     self.emit(index);
                 }
+                self.reconcile_rescue_scan();
                 let _ = ack.send(());
             }
             RegistryInput::WriteOutcome { result, ack } => {
                 self.apply_result(&result);
+                self.reconcile_rescue_scan();
                 let _ = ack.send(());
             }
             RegistryInput::PlaybackFinished {
@@ -1190,6 +1226,15 @@ impl Registry {
 
     async fn discovered(&mut self, discovered: Discovered) {
         if let Some(index) = self.index_of(&discovered.id) {
+            if self.lights[index].snapshot.conn == ConnState::Lost {
+                info!(light_id = %discovered.id, "lost light rediscovered; reconnecting");
+                let (reply, _) = oneshot::channel();
+                // try_send: a full queue means a connect is already pending, and
+                // the registry loop must not block behind a slow connect attempt.
+                let _ = self.lights[index]
+                    .ops_tx
+                    .try_send(LightOp::Connect { reply });
+            }
             if self.lights[index].snapshot.rssi != discovered.rssi {
                 self.lights[index].snapshot.rssi = discovered.rssi;
                 self.emit(index);
@@ -1337,6 +1382,13 @@ impl Registry {
         self.ring_tx.send_replace(Arc::new(self.ring.clone()));
         self.world_tx.send_replace(world);
         let _ = self.events_tx.send(event);
+    }
+}
+
+async fn wait_for_deadline(deadline: Option<Instant>) {
+    match deadline {
+        Some(deadline) => tokio::time::sleep_until(deadline).await,
+        None => std::future::pending().await,
     }
 }
 

@@ -220,6 +220,15 @@ pub struct SimLightHandle {
 }
 
 impl SimLightHandle {
+    /// Makes the next `count` connection attempts fail.
+    pub fn fail_next_connects(&self, count: u32) {
+        self.light
+            .state
+            .lock()
+            .expect("simulator light mutex poisoned")
+            .connect_failures = count;
+    }
+
     /// Returns accepted packets in arrival order with their acceptance times.
     pub fn timeline(&self) -> Vec<(Instant, Decoded)> {
         self.light
